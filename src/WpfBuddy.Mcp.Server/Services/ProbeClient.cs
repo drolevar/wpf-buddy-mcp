@@ -14,6 +14,11 @@ public sealed class ProbeClient : IDisposable
     private StreamWriter? _writer;
     private string? _pipeName;
 
+    // The probe handles one request at a time over a line-framed pipe, so only one
+    // SendAsync may be in flight: concurrent calls would interleave writes/reads and
+    // mis-correlate responses. Serialize the write+read pair.
+    private readonly SemaphoreSlim _gate = new(1, 1);
+
     // UTF-8 WITHOUT a BOM. A BOM makes StreamWriter.AutoFlush=true flush the preamble
     // in its setter (FlushFileBuffers), which blocks until the peer reads it; since
     // both ends do this before reading, it deadlocks ("connected, then nothing").
@@ -95,37 +100,78 @@ public sealed class ProbeClient : IDisposable
 
     public async Task<ProbeResponse?> SendAsync(string method, Dictionary<string, string>? parameters = null, int timeoutMs = 10000)
     {
-        if (!IsConnected || _writer is null || _reader is null)
-        {
-            Log("SEND", $"'{method}' rejected: not connected to probe");
-            return new ProbeResponse { Error = "Not connected to probe." };
-        }
-
+        await _gate.WaitAsync();
         try
         {
-            var request = JsonSerializer.Serialize(new { method, parameters });
-            Log("SEND", LogValues ? request : $"{method} ({request.Length} chars)");
-            await _writer.WriteLineAsync(request);
-
-            using var cts = new CancellationTokenSource(timeoutMs);
-            var responseLine = await _reader.ReadLineAsync(cts.Token);
-            if (responseLine is null)
+            // One-shot reconnect if the pipe dropped but we still know where it was.
+            if (!IsConnected && _pipeName is not null)
             {
-                Log("RECV", $"'{method}': null (probe closed the pipe)");
-                return new ProbeResponse { Error = "No response from probe." };
+                Log("RECONNECT", $"not connected; attempting one-shot reconnect to '{_pipeName}'");
+                await ConnectToPipeAsync(_pipeName, 3000);
             }
-            Log("RECV", LogValues ? responseLine : $"{method} -> {responseLine.Length} chars");
-            return JsonSerializer.Deserialize<ProbeResponse>(responseLine);
+
+            if (!IsConnected || _writer is null || _reader is null)
+            {
+                Log("SEND", $"'{method}' rejected: not connected to probe");
+                return new ProbeResponse { Error = "Not connected to probe." };
+            }
+
+            // Capture into locals so a concurrent Disconnect() can't null them mid-call.
+            var writer = _writer;
+            var reader = _reader;
+            try
+            {
+                var request = JsonSerializer.Serialize(new { method, parameters });
+                Log("SEND", LogValues ? request : $"{method} ({request.Length} chars)");
+                await writer.WriteLineAsync(request);
+
+                using var cts = new CancellationTokenSource(timeoutMs);
+                var responseLine = await reader.ReadLineAsync(cts.Token);
+                if (responseLine is null)
+                {
+                    Log("RECV", $"'{method}': null (probe closed the pipe)");
+                    Disconnect();
+                    return new ProbeResponse { Error = "No response from probe." };
+                }
+                Log("RECV", LogValues ? responseLine : $"{method} -> {responseLine.Length} chars");
+                return JsonSerializer.Deserialize<ProbeResponse>(responseLine);
+            }
+            catch (OperationCanceledException)
+            {
+                // A timed-out request leaves the line-framed channel desynchronized — every
+                // later read would return a stale response. Poison the channel so the next
+                // call reconnects instead.
+                Log("RECV", $"'{method}': timed out after {timeoutMs}ms; poisoning channel");
+                Disconnect();
+                return new ProbeResponse { Error = "Probe request timed out." };
+            }
+            catch (Exception ex)
+            {
+                Log("RECV", $"'{method}': exception: {ex.Message}; poisoning channel");
+                Disconnect();
+                return new ProbeResponse { Error = ex.Message };
+            }
         }
-        catch (OperationCanceledException)
+        finally
         {
-            Log("RECV", $"'{method}': timed out after {timeoutMs}ms");
-            return new ProbeResponse { Error = "Probe request timed out." };
+            _gate.Release();
         }
-        catch (Exception ex)
+    }
+
+    /// <summary>Names of probe pipes currently published on this machine (wpfbuddy-mcp-probe-*).</summary>
+    public static IReadOnlyList<string> EnumerateProbePipes()
+    {
+        try
         {
-            Log("RECV", $"'{method}': exception: {ex.Message}");
-            return new ProbeResponse { Error = ex.Message };
+            return Directory.GetFiles(@"\\.\pipe\")
+                .Select(Path.GetFileName)
+                .Where(n => n is not null && n.StartsWith("wpfbuddy-mcp-probe-", StringComparison.OrdinalIgnoreCase))
+                .Select(n => n!)
+                .ToList();
+        }
+        catch
+        {
+            return Array.Empty<string>();
         }
     }
 
@@ -139,7 +185,11 @@ public sealed class ProbeClient : IDisposable
         _pipe = null;
     }
 
-    public void Dispose() => Disconnect();
+    public void Dispose()
+    {
+        Disconnect();
+        _gate.Dispose();
+    }
 }
 
 public class ProbeResponse

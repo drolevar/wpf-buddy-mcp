@@ -56,7 +56,23 @@ public sealed class ProbeTools
             var pid = _session.Application?.ProcessId;
             _logger.LogInformation("wpf_probe_connect: resolved process id = {Pid}", pid);
             if (pid is null or 0)
-                return JsonSerializer.Serialize(new { error = "No session attached. Attach to an app first." }, JsonOptions.Default);
+            {
+                // No attached app — try to auto-discover a published probe pipe.
+                var pipes = ProbeClient.EnumerateProbePipes();
+                if (pipes.Count == 1)
+                {
+                    _logger.LogInformation("wpf_probe_connect: no session; auto-discovered probe pipe '{Pipe}'", pipes[0]);
+                    connected = await _probe.ConnectAsync(pipes[0]);
+                    return JsonSerializer.Serialize(new { connected, pipeName = _probe.PipeName, autoDiscovered = true }, JsonOptions.Default);
+                }
+                return JsonSerializer.Serialize(new
+                {
+                    error = pipes.Count == 0
+                        ? "No session attached and no probe pipes found. Attach to an app (wpf_attach) or pass an explicit pipeName."
+                        : "No session attached and multiple probe pipes found. Pass an explicit pipeName.",
+                    candidates = pipes
+                }, JsonOptions.Default);
+            }
             _logger.LogInformation("wpf_probe_connect: connecting to probe for pid {Pid}", pid);
             connected = await _probe.ConnectAsync(pid.Value);
         }
@@ -79,7 +95,7 @@ public sealed class ProbeTools
         _audit.Record("wpf_probe_capabilities");
         var methods = new[]
         {
-            "ping", "get_datacontext", "get_viewmodel_properties", "get_binding_errors",
+            "ping", "info", "get_datacontext", "get_viewmodel_properties", "get_binding_errors",
             "get_bindings", "get_command_state", "get_validation_state", "execute_command",
             "get_dispatcher_status"
         };
@@ -95,13 +111,17 @@ public sealed class ProbeTools
 
         var ping = await _probe.SendAsync("ping");
         var dispatcher = await _probe.SendAsync("get_dispatcher_status");
+        var info = await _probe.SendAsync("info");
 
         return JsonSerializer.Serialize(new
         {
             healthy = ping?.Result == "pong",
             pingOk = ping?.Result == "pong",
             dispatcherOk = dispatcher?.Error is null,
-            dispatcherStatus = dispatcher?.Data
+            dispatcherStatus = dispatcher?.Data,
+            probeInfo = info?.Data,
+            sessionPid = _session.Application?.ProcessId,
+            pipeName = _probe.PipeName
         }, JsonOptions.Default);
     }
 

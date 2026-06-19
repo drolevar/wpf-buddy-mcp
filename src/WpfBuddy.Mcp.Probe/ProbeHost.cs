@@ -1,6 +1,8 @@
-using System.Diagnostics;
+using System.Diagnostics.Tracing;
 using System.IO;
 using System.IO.Pipes;
+using System.Security.AccessControl;
+using System.Security.Principal;
 using System.Text;
 using System.Text.Json;
 using System.Windows;
@@ -20,6 +22,11 @@ public sealed class ProbeHost : IDisposable
     // until the peer reads those bytes. Since both ends construct their writer the
     // same way before reading, that mutually deadlocks ("connected, then nothing").
     private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+    // Probe IPC payloads carry live ViewModel values; emit them to the EventSource only
+    // when explicitly opted in for local debugging.
+    private static readonly bool LogValues =
+        Environment.GetEnvironmentVariable("WPFBUDDY_PROBE_LOG_VALUES") is "1" or "true";
 
     private readonly string _pipeName;
     private CancellationTokenSource? _cts;
@@ -43,7 +50,7 @@ public sealed class ProbeHost : IDisposable
     {
         pipeName ??= $"wpfbuddy-mcp-probe-{System.Diagnostics.Process.GetCurrentProcess().Id}";
 
-        Debug.WriteLine($"Starting ProbeHost with pipe name: {pipeName}");
+        ProbeEventSource.Log.Starting(pipeName);
 
         var host = new ProbeHost(pipeName);
         host.StartListening();
@@ -57,16 +64,33 @@ public sealed class ProbeHost : IDisposable
         _listenTask = Task.Run(() => ListenLoop(_cts.Token));
     }
 
+    private NamedPipeServerStream CreateServerPipe()
+    {
+        // Restrict the pipe to the current user so other local users/processes can't
+        // connect and drive the target app's ViewModel commands.
+        var security = new PipeSecurity();
+        var user = WindowsIdentity.GetCurrent().User;
+        if (user is not null)
+            security.AddAccessRule(new PipeAccessRule(user, PipeAccessRights.FullControl, AccessControlType.Allow));
+#if NETFRAMEWORK
+        return new NamedPipeServerStream(_pipeName, PipeDirection.InOut, 2, PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous, 0, 0, security);
+#else
+        return NamedPipeServerStreamAcl.Create(_pipeName, PipeDirection.InOut, 2, PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous, 0, 0, security);
+#endif
+    }
+
     private async Task ListenLoop(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)
         {
             try
             {
-                using var pipe = new NamedPipeServerStream(_pipeName, PipeDirection.InOut, 2, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+                using var pipe = CreateServerPipe();
                 await pipe.WaitForConnectionAsync(ct);
                 
-                Debug.WriteLine($"Pipe connected: {_pipeName}");
+                ProbeEventSource.Log.Connected(_pipeName);
 
                 using var reader = new StreamReader(pipe, Utf8NoBom);
                 using var writer = new StreamWriter(pipe, Utf8NoBom) { AutoFlush = true };
@@ -76,11 +100,13 @@ public sealed class ProbeHost : IDisposable
                     var line = await reader.ReadLineAsync();
                     if (line is null) break;
 
-                    Debug.WriteLine($"Received request: {line}");
+                    ProbeEventSource.Log.Request(line.Length);
+                    if (LogValues) ProbeEventSource.Log.Payload("REQ", line);
 
                     var response = await ProcessRequest(line);
                     
-                    Debug.WriteLine($"Sending response: {response}");
+                    ProbeEventSource.Log.Response(response.Length);
+                    if (LogValues) ProbeEventSource.Log.Payload("RESP", response);
                     
                     await writer.WriteLineAsync(response);
                 }
@@ -89,10 +115,11 @@ public sealed class ProbeHost : IDisposable
             {
                 break;
             }
-            catch
+            catch (Exception ex)
             {
-                // Reconnect on error
-                await Task.Delay(100, ct);
+                ProbeEventSource.Log.Error(ex.Message);
+                // Tear down and recreate the server pipe on error.
+                try { await Task.Delay(100, ct); } catch (OperationCanceledException) { break; }
             }
         }
     }
@@ -110,6 +137,7 @@ public sealed class ProbeHost : IDisposable
             return request.Method switch
             {
                 "ping" => JsonSerializer.Serialize(new ProbeResponse { Result = "pong" }),
+                "info" => GetInfo(),
                 "get_datacontext" => await RunOnDispatcher(() => GetDataContext(request)),
                 "get_viewmodel_properties" => await RunOnDispatcher(() => GetViewModelProperties(request)),
                 "get_binding_errors" => await RunOnDispatcher(() => GetBindingErrors()),
@@ -129,9 +157,27 @@ public sealed class ProbeHost : IDisposable
 
     private async Task<string> RunOnDispatcher(Func<string> action)
     {
-        string result = "";
-        await Application.Current.Dispatcher.InvokeAsync(() => result = action());
-        return result;
+        var app = Application.Current;
+        if (app?.Dispatcher is null)
+            return JsonSerializer.Serialize(new ProbeResponse
+            {
+                Error = "No WPF Application/Dispatcher available — is the probe running inside a WPF app, started after App init?"
+            });
+
+        try
+        {
+            string result = "";
+            var op = app.Dispatcher.InvokeAsync(() => result = action());
+            // Bound the UI-thread work so a hung dispatcher surfaces as an error, not a hang.
+            if (await Task.WhenAny(op.Task, Task.Delay(TimeSpan.FromSeconds(10))) != op.Task)
+                return JsonSerializer.Serialize(new ProbeResponse { Error = "UI thread unresponsive (dispatcher invoke timed out)." });
+            await op.Task;
+            return result;
+        }
+        catch (Exception ex)
+        {
+            return JsonSerializer.Serialize(new ProbeResponse { Error = ex.Message });
+        }
     }
 
     private string GetDataContext(ProbeRequest request)
@@ -274,6 +320,20 @@ public sealed class ProbeHost : IDisposable
         return JsonSerializer.Serialize(new ProbeResponse { Result = "executed" });
     }
 
+    private string GetInfo()
+    {
+        var name = typeof(ProbeHost).Assembly.GetName();
+        return JsonSerializer.Serialize(new ProbeResponse
+        {
+            Data = JsonSerializer.Serialize(new
+            {
+                version = name.Version?.ToString(),
+                pid = System.Diagnostics.Process.GetCurrentProcess().Id,
+                pipeName = _pipeName
+            })
+        });
+    }
+
     private string GetDispatcherStatus()
     {
         var dispatcher = Application.Current.Dispatcher;
@@ -392,4 +452,35 @@ public class ProbeResponse
     public string? Result { get; set; }
     public string? Data { get; set; }
     public string? Error { get; set; }
+}
+
+/// <summary>
+/// Structured logging sink for the probe. Works identically on net48 and net8.0-windows,
+/// is zero-cost when no listener is attached, and is consumable via ETW/PerfView without a
+/// debugger. Replaces Debug.WriteLine (compiled out in Release). Logs metadata only by
+/// default; full payloads only when WPFBUDDY_PROBE_LOG_VALUES is set.
+/// </summary>
+[EventSource(Name = "WpfBuddy-Mcp-Probe")]
+internal sealed class ProbeEventSource : EventSource
+{
+    public static readonly ProbeEventSource Log = new();
+    private ProbeEventSource() { }
+
+    [Event(1, Level = EventLevel.Informational, Message = "Probe starting on pipe {0}")]
+    public void Starting(string pipeName) => WriteEvent(1, pipeName);
+
+    [Event(2, Level = EventLevel.Informational, Message = "Client connected on pipe {0}")]
+    public void Connected(string pipeName) => WriteEvent(2, pipeName);
+
+    [Event(3, Level = EventLevel.Verbose, Message = "Request received ({0} chars)")]
+    public void Request(int length) => WriteEvent(3, length);
+
+    [Event(4, Level = EventLevel.Verbose, Message = "Response sent ({0} chars)")]
+    public void Response(int length) => WriteEvent(4, length);
+
+    [Event(5, Level = EventLevel.Error, Message = "Listen loop error: {0}")]
+    public void Error(string message) => WriteEvent(5, message);
+
+    [Event(6, Level = EventLevel.Verbose, Message = "{0} payload: {1}")]
+    public void Payload(string direction, string json) => WriteEvent(6, direction, json);
 }
