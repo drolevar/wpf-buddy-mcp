@@ -1,10 +1,8 @@
 {
   "mcpServers": {
     "wpfbuddy-mcp": {
-      "command": "dotnet",
-      "args": [
-        "src/WpfBuddy.Mcp.Server/bin/Debug/net8.0-windows/WpfBuddy.Mcp.Server.dll"
-      ]
+      "command": "src/WpfBuddy.Mcp.Server/bin/Debug/net8.0-windows/WpfBuddy.Mcp.Server.exe",
+      "args": []
     }
   }
 }

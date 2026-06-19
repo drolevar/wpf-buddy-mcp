@@ -12,17 +12,19 @@ public sealed class PolicyTools
     private readonly SessionManager _session;
     private readonly UiaAdapter _uia;
     private readonly AuditLog _audit;
+    private readonly ProbeClient _probe;
 
     private static RecordingPolicy _currentPolicy = new();
     private static readonly List<RedactionRule> _redactionRules = new();
     private static readonly object _policyLock = new();
     private static readonly object _redactionLock = new();
 
-    public PolicyTools(SessionManager session, UiaAdapter uia, AuditLog audit)
+    public PolicyTools(SessionManager session, UiaAdapter uia, AuditLog audit, ProbeClient probe)
     {
         _session = session;
         _uia = uia;
         _audit = audit;
+        _probe = probe;
     }
 
     [McpServerTool(Name = "wpf_get_capabilities", ReadOnly = true), Description("List all available tool categories and their status.")]
@@ -51,7 +53,8 @@ public sealed class PolicyTools
                 new { name = "probe/mvvm", tools = 16, status = "requires_probe" }
             },
             policyActive = true,
-            probeConnected = false
+            attached = _session.IsAttached,
+            probeConnected = _probe.IsConnected
         };
         return JsonSerializer.Serialize(capabilities, JsonOptions.Default);
     }
@@ -113,6 +116,11 @@ public sealed class PolicyTools
     public string ConfirmAction([Description("Action to execute. One of: click, invoke, set_value, toggle.")] string action, [Description("AutomationId of the target element. Preferred selector.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("Value to set when action is set_value; ignored for other actions.")] string? value = null)
     {
         _audit.Record("wpf_confirm_action");
+        lock (_policyLock)
+        {
+            if (!_currentPolicy.AllowDestructive)
+                return JsonSerializer.Serialize(new { error = "Destructive actions are disabled by policy. Enable via wpf_set_policy(allowDestructive: true)." }, JsonOptions.Default);
+        }
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)

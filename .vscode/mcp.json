@@ -2,10 +2,8 @@
   "servers": {
     "wpfbuddy-mcp": {
       "type": "stdio",
-      "command": "dotnet",
-      "args": [
-        "${workspaceFolder}/src/WpfBuddy.Mcp.Server/bin/Debug/net8.0-windows/WpfBuddy.Mcp.Server.dll"
-      ]
+      "command": "${workspaceFolder}/src/WpfBuddy.Mcp.Server/bin/Debug/net8.0-windows/WpfBuddy.Mcp.Server.exe",
+      "args": []
     }
   }
 }

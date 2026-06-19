@@ -7,6 +7,9 @@
     <Nullable>enable</Nullable>
     <RootNamespace>WpfBuddy.Mcp.Server</RootNamespace>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- Embeds PerMonitorV2 DPI awareness into the apphost exe (see app.manifest). Launch the
+         built .exe (not `dotnet <dll>`) so the manifest applies. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>
