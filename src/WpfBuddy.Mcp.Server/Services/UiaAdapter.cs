@@ -1,7 +1,11 @@
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
+using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Conditions;
 using FlaUI.Core.Definitions;
+using FlaUI.Core.Tools;
 using WpfBuddy.Mcp.Server.Models;
 
 namespace WpfBuddy.Mcp.Server.Services;
@@ -25,7 +29,7 @@ public sealed class UiaAdapter
             ?? throw new InvalidOperationException("Could not get main window. The application may be busy or not responding.");
         var startElement = root ?? window;
 
-        var tree = BuildTree(startElement, maxDepth, 0);
+        var tree = BuildCachedTree(startElement, maxDepth);
         var allElements = FlattenTree(tree);
 
         var automationIds = allElements
@@ -70,16 +74,72 @@ public sealed class UiaAdapter
         var searchRoot = root ?? _session.ActiveWindow
             ?? throw new InvalidOperationException("Could not get main window.");
         var condition = BuildCondition(criteria);
-        return searchRoot.FindAll(FlaUI.Core.Definitions.TreeScope.Descendants, condition).ToList();
+        var predicate = BuildNamePredicate(criteria);
+        IEnumerable<AutomationElement> matches = searchRoot.FindAll(TreeScope.Descendants, condition);
+        if (predicate is not null) matches = matches.Where(predicate);
+        return matches.ToList();
     }
 
-    public AutomationElement? FindElement(ElementCriteria criteria, AutomationElement? root = null)
+    public AutomationElement? FindElement(ElementCriteria criteria, AutomationElement? root = null, int timeoutMs = 0)
     {
         EnsureAttached();
         var searchRoot = root ?? _session.ActiveWindow
             ?? throw new InvalidOperationException("Could not get main window.");
         var condition = BuildCondition(criteria);
-        return searchRoot.FindFirst(FlaUI.Core.Definitions.TreeScope.Descendants, condition);
+        var predicate = BuildNamePredicate(criteria);
+
+        AutomationElement? FindOnce() => predicate is null
+            ? searchRoot.FindFirst(TreeScope.Descendants, condition)
+            : searchRoot.FindAll(TreeScope.Descendants, condition).FirstOrDefault(predicate);
+
+        // timeoutMs > 0 retries until the element appears (transient absence shouldn't fail instantly).
+        if (timeoutMs <= 0)
+            return FindOnce();
+        return Retry.WhileNull(FindOnce, TimeSpan.FromMilliseconds(timeoutMs)).Result;
+    }
+
+    private static Func<AutomationElement, bool>? BuildNamePredicate(ElementCriteria criteria)
+    {
+        if (string.IsNullOrEmpty(criteria.Name) || string.IsNullOrEmpty(criteria.NameMatch) ||
+            criteria.NameMatch.Equals("equals", StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var needle = criteria.Name!;
+        var mode = criteria.NameMatch!.ToLowerInvariant();
+        return el =>
+        {
+            var n = el.Properties.Name.ValueOrDefault ?? string.Empty;
+            return mode switch
+            {
+                "contains" => n.Contains(needle, StringComparison.OrdinalIgnoreCase),
+                "startswith" => n.StartsWith(needle, StringComparison.OrdinalIgnoreCase),
+                "regex" => SafeRegex(n, needle),
+                _ => n.Equals(needle, StringComparison.OrdinalIgnoreCase)
+            };
+        };
+    }
+
+    private static bool SafeRegex(string input, string pattern)
+    {
+        try { return Regex.IsMatch(input, pattern); } catch { return false; }
+    }
+
+    /// <summary>Cheap structural fingerprint of a UI tree for change/stability detection (avoids serializing the whole tree each poll).</summary>
+    public static string Fingerprint(IEnumerable<UiElement> tree)
+    {
+        var sb = new StringBuilder();
+        void Walk(IEnumerable<UiElement> nodes)
+        {
+            foreach (var e in nodes)
+            {
+                sb.Append(e.AutomationId).Append('|').Append(e.ControlType).Append('|')
+                  .Append(e.Name).Append('|').Append(e.IsEnabled).Append('|').Append(e.Value).Append(';');
+                Walk(e.Children);
+            }
+        }
+        Walk(tree);
+        using var sha = System.Security.Cryptography.SHA256.Create();
+        return Convert.ToHexString(sha.ComputeHash(Encoding.UTF8.GetBytes(sb.ToString())));
     }
 
     public AutomationElement? ResolveSelector(ElementSelector selector)
@@ -180,6 +240,36 @@ public sealed class UiaAdapter
         };
     }
 
+    private List<UiElement> BuildCachedTree(AutomationElement startElement, int maxDepth)
+    {
+        // Cache the bulk element properties for the whole subtree in one pass instead of a
+        // cross-process round-trip per property per node. AutomationElementMode.Full keeps a
+        // live element so any uncached read (e.g. pattern availability) falls back transparently.
+        try
+        {
+            var el = _session.Automation!.PropertyLibrary.Element;
+            var cache = new CacheRequest
+            {
+                AutomationElementMode = AutomationElementMode.Full,
+                TreeScope = TreeScope.Subtree
+            };
+            cache.Add(el.AutomationId);
+            cache.Add(el.Name);
+            cache.Add(el.ControlType);
+            cache.Add(el.ClassName);
+            cache.Add(el.IsEnabled);
+            cache.Add(el.IsOffscreen);
+            cache.Add(el.BoundingRectangle);
+            using (cache.Activate())
+                return BuildTree(startElement, maxDepth, 0);
+        }
+        catch
+        {
+            // Caching unavailable for any reason — fall back to the uncached walk.
+            return BuildTree(startElement, maxDepth, 0);
+        }
+    }
+
     private List<UiElement> BuildTree(AutomationElement element, int maxDepth, int currentDepth)
     {
         var result = new List<UiElement>();
@@ -191,17 +281,7 @@ public sealed class UiaAdapter
         {
             var children = element.FindAll(TreeScope.Children, TrueCondition.Default);
             foreach (var child in children)
-            {
-                var childElements = BuildTree(child, maxDepth, currentDepth + 1);
-                if (childElements.Count == 1)
-                {
-                    uiElement.Children.Add(childElements[0]);
-                }
-                else
-                {
-                    uiElement.Children.AddRange(childElements);
-                }
-            }
+                uiElement.Children.AddRange(BuildTree(child, maxDepth, currentDepth + 1));
         }
         catch { }
 
@@ -216,7 +296,11 @@ public sealed class UiaAdapter
 
         if (!string.IsNullOrEmpty(criteria.AutomationId))
             conditions.Add(cf.ByAutomationId(criteria.AutomationId));
-        if (!string.IsNullOrEmpty(criteria.Name))
+        // When a non-equals name match is requested, the UIA condition can't express it —
+        // omit Name here and let BuildNamePredicate filter the candidates in-memory.
+        var nameViaPredicate = !string.IsNullOrEmpty(criteria.NameMatch)
+            && !criteria.NameMatch.Equals("equals", StringComparison.OrdinalIgnoreCase);
+        if (!string.IsNullOrEmpty(criteria.Name) && !nameViaPredicate)
             conditions.Add(cf.ByName(criteria.Name));
         if (!string.IsNullOrEmpty(criteria.ControlType) && Enum.TryParse<ControlType>(criteria.ControlType, true, out var ct))
             conditions.Add(cf.ByControlType(ct));

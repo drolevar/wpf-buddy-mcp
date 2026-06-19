@@ -53,9 +53,10 @@ public sealed class SnapshotTools
         var elements = _uia.QueryElements(automationId, name, controlType, className);
         var first = elements.FirstOrDefault();
         if (first is null)
-            return JsonSerializer.Serialize(new { error = "No matching element found." }, JsonOptions.Default);
+            return JsonSerializer.Serialize(new { error = "No matching element found.", matchCount = 0 }, JsonOptions.Default);
 
-        return JsonSerializer.Serialize(first, JsonOptions.Default);
+        // matchCount lets the caller tell whether the criteria were ambiguous.
+        return JsonSerializer.Serialize(new { matchCount = elements.Count, element = first }, JsonOptions.Default);
     }
 
     [McpServerTool(Name = "wpf_query_all", ReadOnly = true), Description("Find all elements matching criteria.")]
@@ -67,6 +68,17 @@ public sealed class SnapshotTools
         _audit.Record("wpf_query_all");
         var elements = _uia.QueryElements(automationId, name, controlType, className);
         return JsonSerializer.Serialize(elements, JsonOptions.Default);
+    }
+
+    [McpServerTool(Name = "wpf_find_by_text", ReadOnly = true), Description("Find elements whose Name/content matches text by a chosen mode (UIA name matching is otherwise exact-only). Returns matchCount so ambiguous matches can be disambiguated.")]
+    public string FindByText([Description("Text to match against each element's Name/content. Required.")] string text,
+        [Description("Match mode: contains (default), equals, startsWith, or regex (.NET regex syntax).")] string mode = "contains",
+        [Description("Optional UIA ControlType filter, e.g. Button, Edit, ListItem, Text.")] string? controlType = null)
+    {
+        _audit.Record("wpf_find_by_text");
+        var criteria = new ElementCriteria { Name = text, NameMatch = mode, ControlType = controlType };
+        var matches = _uia.FindElements(criteria).Select(_uia.MapElement).ToList();
+        return JsonSerializer.Serialize(new { matchCount = matches.Count, matches }, JsonOptions.Default);
     }
 
     [McpServerTool(Name = "wpf_get_element", ReadOnly = true), Description("Resolve a selector to one element and return its properties.")]
@@ -283,25 +295,23 @@ public sealed class SnapshotTools
             if (before is null || after is null)
                 return JsonSerializer.Serialize(new { error = "Could not parse snapshots." }, JsonOptions.Default);
 
-            var beforeElements = FlattenElements(before.Tree);
-            var afterElements = FlattenElements(after.Tree);
+            // Key by a STABLE identity: AutomationId when present, else a structural path.
+            // The per-capture sequential e1..eN id is NOT stable across captures and produced
+            // meaningless added/removed/changed sets.
+            var beforeMap = KeyElements(before.Tree);
+            var afterMap = KeyElements(after.Tree);
 
-            var beforeIds = beforeElements.Select(e => e.AutomationId ?? e.Id).ToHashSet();
-            var afterIds = afterElements.Select(e => e.AutomationId ?? e.Id).ToHashSet();
-
-            var added = afterIds.Except(beforeIds).ToList();
-            var removed = beforeIds.Except(afterIds).ToList();
-            var common = beforeIds.Intersect(afterIds).ToList();
+            var added = afterMap.Keys.Except(beforeMap.Keys).ToList();
+            var removed = beforeMap.Keys.Except(afterMap.Keys).ToList();
+            var common = beforeMap.Keys.Intersect(afterMap.Keys);
 
             var changed = new List<object>();
-            foreach (var id in common)
+            foreach (var key in common)
             {
-                var b = beforeElements.First(e => (e.AutomationId ?? e.Id) == id);
-                var a = afterElements.First(e => (e.AutomationId ?? e.Id) == id);
+                var b = beforeMap[key];
+                var a = afterMap[key];
                 if (b.IsEnabled != a.IsEnabled || b.Value != a.Value || b.Name != a.Name)
-                {
-                    changed.Add(new { id, before = new { b.IsEnabled, b.Value, b.Name }, after = new { a.IsEnabled, a.Value, a.Name } });
-                }
+                    changed.Add(new { key, before = new { b.IsEnabled, b.Value, b.Name }, after = new { a.IsEnabled, a.Value, a.Name } });
             }
 
             return JsonSerializer.Serialize(new { added, removed, changed, addedCount = added.Count, removedCount = removed.Count, changedCount = changed.Count }, JsonOptions.Default);
@@ -328,14 +338,14 @@ public sealed class SnapshotTools
             try
             {
                 var snapshot = _uia.CaptureSnapshot(maxDepth: 3);
-                var currentJson = JsonSerializer.Serialize(snapshot.Tree, JsonOptions.Default);
+                var currentFingerprint = UiaAdapter.Fingerprint(snapshot.Tree);
 
-                if (lastSnapshot is not null && currentJson != lastSnapshot)
+                if (lastSnapshot is not null && currentFingerprint != lastSnapshot)
                 {
                     changes.Add(new { timestampMs = sw.ElapsedMilliseconds, iteration, changeDetected = true });
                 }
 
-                lastSnapshot = currentJson;
+                lastSnapshot = currentFingerprint;
                 iteration++;
             }
             catch { }
@@ -346,15 +356,23 @@ public sealed class SnapshotTools
         return JsonSerializer.Serialize(new { durationMs, totalIterations = iteration, changesDetected = changes.Count, changes }, JsonOptions.Default);
     }
 
-    private static List<UiElement> FlattenElements(List<UiElement> tree)
+    // Stable element keys for diffing: AutomationId when present, else a structural path.
+    private static Dictionary<string, UiElement> KeyElements(List<UiElement> tree)
     {
-        var result = new List<UiElement>();
-        foreach (var el in tree)
+        var map = new Dictionary<string, UiElement>();
+        void Walk(List<UiElement> nodes, string path)
         {
-            result.Add(el);
-            if (el.Children.Count > 0)
-                result.AddRange(FlattenElements(el.Children));
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                var el = nodes[i];
+                var key = !string.IsNullOrEmpty(el.AutomationId)
+                    ? "aid:" + el.AutomationId
+                    : $"path:{path}/{i}:{el.ControlType}:{el.Name}";
+                map[key] = el;
+                Walk(el.Children, $"{path}/{i}");
+            }
         }
-        return result;
+        Walk(tree, "");
+        return map;
     }
 }

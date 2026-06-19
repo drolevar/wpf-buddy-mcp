@@ -48,6 +48,10 @@ public sealed class ElementCriteria
 
     [JsonPropertyName("indexPath")]
     public int[]? IndexPath { get; set; }
+
+    /// <summary>How <see cref="Name"/> is matched: "equals" (default), "contains", "startsWith", or "regex".</summary>
+    [JsonPropertyName("nameMatch")]
+    public string? NameMatch { get; set; }
 }
 
 public sealed class ProbeCriteria

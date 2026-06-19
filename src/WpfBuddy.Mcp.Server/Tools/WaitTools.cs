@@ -143,7 +143,7 @@ public sealed class WaitTools
             try
             {
                 var snapshot = _uia.CaptureSnapshot(maxDepth: 3);
-                var currentJson = JsonSerializer.Serialize(snapshot.Tree, JsonOptions.Default);
+                var currentJson = UiaAdapter.Fingerprint(snapshot.Tree);
 
                 if (currentJson == lastSnapshot)
                 {
@@ -158,7 +158,7 @@ public sealed class WaitTools
             }
             catch { }
 
-            Thread.Sleep(50);
+            Thread.Sleep(150);
         }
 
         return Error($"Snapshot did not stabilize within {timeoutMs}ms.");
@@ -385,7 +385,7 @@ public sealed class WaitTools
         try
         {
             var snap = _uia.CaptureSnapshot(maxDepth: 2);
-            initialSnapshot = JsonSerializer.Serialize(snap.Tree, JsonOptions.Default);
+            initialSnapshot = UiaAdapter.Fingerprint(snap.Tree);
         }
         catch { }
 
@@ -395,7 +395,7 @@ public sealed class WaitTools
             try
             {
                 var snap = _uia.CaptureSnapshot(maxDepth: 2);
-                var current = JsonSerializer.Serialize(snap.Tree, JsonOptions.Default);
+                var current = UiaAdapter.Fingerprint(snap.Tree);
                 return current != initialSnapshot;
             }
             catch { return false; }
