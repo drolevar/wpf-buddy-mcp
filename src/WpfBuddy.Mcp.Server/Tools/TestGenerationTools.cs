@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
@@ -320,5 +321,5 @@ public abstract class UiTestBase : IDisposable
     }
 
     private static string Error(string message) =>
-        JsonSerializer.Serialize(new { error = message }, JsonOptions.Default);
+        throw new McpException(message);
 }

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
@@ -393,5 +394,5 @@ public sealed class AccessibilityTools
     }
 
     private static string Error(string message) =>
-        JsonSerializer.Serialize(new { error = message }, JsonOptions.Default);
+        throw new McpException(message);
 }

@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
@@ -27,7 +28,7 @@ public sealed class ReportingTools
         _audit.Record("wpf_generate_testability_report");
         var window = _session.ActiveWindow;
         if (window is null)
-            return JsonSerializer.Serialize(new { error = "No window attached." }, JsonOptions.Default);
+            throw new McpException("No window attached.");
 
         var allElements = _uia.QueryElements();
         var total = allElements.Count;
@@ -150,7 +151,7 @@ public sealed class ReportingTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -186,7 +187,7 @@ public sealed class ReportingTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 

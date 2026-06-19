@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Services;
 
@@ -30,7 +31,7 @@ public sealed class DevWatcherTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -61,7 +62,7 @@ public sealed class DevWatcherTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -95,7 +96,7 @@ public sealed class DevWatcherTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -168,7 +169,7 @@ public sealed class DevWatcherTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 

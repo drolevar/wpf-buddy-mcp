@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
@@ -37,7 +38,7 @@ public sealed class SnapshotTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         var snapshot = _uia.CaptureSnapshot(element, maxDepth);
         return JsonSerializer.Serialize(snapshot, JsonOptions.Default);
@@ -53,7 +54,7 @@ public sealed class SnapshotTools
         var elements = _uia.QueryElements(automationId, name, controlType, className);
         var first = elements.FirstOrDefault();
         if (first is null)
-            return JsonSerializer.Serialize(new { error = "No matching element found.", matchCount = 0 }, JsonOptions.Default);
+            throw new McpException("No matching element found.");
 
         // matchCount lets the caller tell whether the criteria were ambiguous.
         return JsonSerializer.Serialize(new { matchCount = elements.Count, element = first }, JsonOptions.Default);
@@ -90,7 +91,7 @@ public sealed class SnapshotTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name, ControlType = controlType };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         var mapped = _uia.MapElement(element);
         return JsonSerializer.Serialize(mapped, JsonOptions.Default);
@@ -104,7 +105,7 @@ public sealed class SnapshotTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         var props = new
         {
@@ -134,7 +135,7 @@ public sealed class SnapshotTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         var mapped = _uia.MapElement(element);
         return JsonSerializer.Serialize(new { patterns = mapped.Patterns }, JsonOptions.Default);
@@ -148,7 +149,7 @@ public sealed class SnapshotTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         var text = element.Properties.Name.ValueOrDefault;
         string? value = null;
@@ -170,7 +171,7 @@ public sealed class SnapshotTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         string? value = null;
         try
@@ -193,7 +194,7 @@ public sealed class SnapshotTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         bool? isChecked = null;
         string? expandState = null;
@@ -232,7 +233,7 @@ public sealed class SnapshotTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         var bounds = element.BoundingRectangle;
         var windowBounds = _session.ActiveWindow?.BoundingRectangle;
@@ -259,10 +260,10 @@ public sealed class SnapshotTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         if (!element.Patterns.Selection.IsSupported)
-            return JsonSerializer.Serialize(new { error = "Element does not support Selection pattern." }, JsonOptions.Default);
+            throw new McpException("Element does not support Selection pattern.");
 
         try
         {
@@ -278,7 +279,7 @@ public sealed class SnapshotTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -293,7 +294,7 @@ public sealed class SnapshotTools
             var before = JsonSerializer.Deserialize<UiSnapshot>(beforeJson, JsonOptions.Default);
             var after = JsonSerializer.Deserialize<UiSnapshot>(afterJson, JsonOptions.Default);
             if (before is null || after is null)
-                return JsonSerializer.Serialize(new { error = "Could not parse snapshots." }, JsonOptions.Default);
+                throw new McpException("Could not parse snapshots.");
 
             // Key by a STABLE identity: AutomationId when present, else a structural path.
             // The per-capture sequential e1..eN id is NOT stable across captures and produced
@@ -318,7 +319,7 @@ public sealed class SnapshotTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 

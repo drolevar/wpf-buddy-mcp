@@ -3,6 +3,7 @@ using System.Text.Json;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.Input;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
@@ -41,7 +42,7 @@ public sealed class IntentTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -71,7 +72,7 @@ public sealed class IntentTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -88,7 +89,7 @@ public sealed class IntentTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -101,7 +102,7 @@ public sealed class IntentTools
         {
             var data = JsonSerializer.Deserialize<Dictionary<string, string>>(dataJson, JsonOptions.Default);
             if (data is null || data.Count == 0)
-                return JsonSerializer.Serialize(new { error = "No data provided. Pass a JSON object with field names/values." }, JsonOptions.Default);
+                throw new McpException("No data provided. Pass a JSON object with field names/values.");
 
             var allElements = _uia.QueryElements();
             var inputs = allElements.Where(e => e.ControlType is "TextBox" or "ComboBox" or "CheckBox" or "RadioButton").ToList();
@@ -179,7 +180,7 @@ public sealed class IntentTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -208,11 +209,7 @@ public sealed class IntentTools
             }
 
             if (match is null)
-                return JsonSerializer.Serialize(new
-                {
-                    error = $"No navigation element matching '{target}' found.",
-                    availableTargets = navElements.Select(e => e.Name ?? e.AutomationId).Where(n => n is not null).Distinct().Take(15)
-                }, JsonOptions.Default);
+                throw new McpException($"No navigation element matching '{target}' found.");
 
             var criteria = new ElementCriteria
             {
@@ -221,7 +218,7 @@ public sealed class IntentTools
             };
             var element = _uia.FindElement(criteria);
             if (element is null)
-                return JsonSerializer.Serialize(new { error = "Matched element not resolvable." }, JsonOptions.Default);
+                throw new McpException("Matched element not resolvable.");
 
             if (element.Patterns.Invoke.IsSupported)
                 element.Patterns.Invoke.Pattern.Invoke();
@@ -244,7 +241,7 @@ public sealed class IntentTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 

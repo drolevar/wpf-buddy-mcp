@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Services;
 
@@ -32,7 +33,7 @@ public sealed class ClipboardTools
             thread.Start();
             thread.Join();
             if (threadEx != null)
-                return JsonSerializer.Serialize(new { error = threadEx.Message }, JsonOptions.Default);
+                throw new McpException(threadEx.Message);
             const int maxLen = 100000;
             var fullText = text ?? "";
             var truncated = fullText.Length > maxLen;
@@ -41,7 +42,7 @@ public sealed class ClipboardTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -67,12 +68,12 @@ public sealed class ClipboardTools
             thread.Start();
             thread.Join();
             if (threadEx != null)
-                return JsonSerializer.Serialize(new { error = threadEx.Message }, JsonOptions.Default);
+                throw new McpException(threadEx.Message);
             return JsonSerializer.Serialize(new { result = "clipboard_set", length = text?.Length ?? 0 }, JsonOptions.Default);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -92,12 +93,12 @@ public sealed class ClipboardTools
             thread.Start();
             thread.Join();
             if (threadEx != null)
-                return JsonSerializer.Serialize(new { error = threadEx.Message }, JsonOptions.Default);
+                throw new McpException(threadEx.Message);
             return JsonSerializer.Serialize(new { result = "clipboard_cleared" }, JsonOptions.Default);
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -135,7 +136,7 @@ public sealed class ClipboardTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -160,7 +161,7 @@ public sealed class ClipboardTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 }

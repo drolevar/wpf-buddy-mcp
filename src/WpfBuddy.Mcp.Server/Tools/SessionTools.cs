@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
@@ -76,7 +77,7 @@ public sealed class SessionTools
         }
         else
         {
-            return JsonSerializer.Serialize(new { error = "Provide processId or processName." }, JsonOptions.Default);
+            throw new McpException("Provide processId or processName.");
         }
 
         var status = _session.GetStatus();
@@ -102,7 +103,7 @@ public sealed class SessionTools
     public string FocusWindow()
     {
         if (!_session.IsAttached || _session.ActiveWindow is null)
-            return JsonSerializer.Serialize(new { error = "No window attached." }, JsonOptions.Default);
+            throw new McpException("No window attached.");
 
         _audit.Record("wpf_focus_window");
         _session.ActiveWindow.SetForeground();
@@ -113,7 +114,7 @@ public sealed class SessionTools
     public string ListWindows()
     {
         if (!_session.IsAttached || _session.Automation is null)
-            return JsonSerializer.Serialize(new { error = "No app attached." }, JsonOptions.Default);
+            throw new McpException("No app attached.");
 
         _audit.Record("wpf_list_windows");
         var windows = _session.Application!.GetAllTopLevelWindows(_session.Automation);
@@ -134,7 +135,7 @@ public sealed class SessionTools
         [Description("AutomationId of the target window (exact match); takes precedence over title.")] string? automationId = null)
     {
         if (!_session.IsAttached || _session.Automation is null)
-            return JsonSerializer.Serialize(new { error = "No app attached." }, JsonOptions.Default);
+            throw new McpException("No app attached.");
 
         _audit.Record("wpf_select_window", parameters: new() { ["title"] = title, ["automationId"] = automationId });
         var windows = _session.Application!.GetAllTopLevelWindows(_session.Automation);
@@ -144,7 +145,7 @@ public sealed class SessionTools
             (!string.IsNullOrEmpty(automationId) && w.Properties.AutomationId.ValueOrDefault == automationId));
 
         if (target is null)
-            return JsonSerializer.Serialize(new { error = "Window not found." }, JsonOptions.Default);
+            throw new McpException("Window not found.");
 
         _session.SetActiveWindow(target);
         return JsonSerializer.Serialize(new { result = "selected", title = target.Title }, JsonOptions.Default);
@@ -156,7 +157,7 @@ public sealed class SessionTools
         [Description("AutomationId of the target window (exact match); takes precedence over title. If neither matches, the active window is closed.")] string? automationId = null)
     {
         if (!_session.IsAttached || _session.Automation is null)
-            return JsonSerializer.Serialize(new { error = "No app attached." }, JsonOptions.Default);
+            throw new McpException("No app attached.");
 
         _audit.Record("wpf_close_window", parameters: new() { ["title"] = title, ["automationId"] = automationId });
         var windows = _session.Application!.GetAllTopLevelWindows(_session.Automation);
@@ -168,7 +169,7 @@ public sealed class SessionTools
             target = _session.ActiveWindow;
 
         if (target is null)
-            return JsonSerializer.Serialize(new { error = "Window not found." }, JsonOptions.Default);
+            throw new McpException("Window not found.");
 
         target.Close();
         return JsonSerializer.Serialize(new { result = "closed" }, JsonOptions.Default);
@@ -178,7 +179,7 @@ public sealed class SessionTools
     public string GetWindowState()
     {
         if (!_session.IsAttached || _session.ActiveWindow is null)
-            return JsonSerializer.Serialize(new { error = "No window attached." }, JsonOptions.Default);
+            throw new McpException("No window attached.");
 
         var window = _session.ActiveWindow;
         var result = new
@@ -203,13 +204,13 @@ public sealed class SessionTools
         [Description("Required. Target window state. Allowed values: minimize/minimized, maximize/maximized, restore/normal.")] string state)
     {
         if (!_session.IsAttached || _session.ActiveWindow is null)
-            return JsonSerializer.Serialize(new { error = "No window attached." }, JsonOptions.Default);
+            throw new McpException("No window attached.");
 
         _audit.Record("wpf_set_window_state", parameters: new() { ["state"] = state });
         var window = _session.ActiveWindow;
 
         if (!window.Patterns.Window.IsSupported)
-            return JsonSerializer.Serialize(new { error = "Window pattern not supported." }, JsonOptions.Default);
+            throw new McpException("Window pattern not supported.");
 
         switch (state.ToLowerInvariant())
         {
@@ -223,7 +224,7 @@ public sealed class SessionTools
                 window.Patterns.Window.Pattern.SetWindowVisualState(FlaUI.Core.Definitions.WindowVisualState.Normal);
                 break;
             default:
-                return JsonSerializer.Serialize(new { error = $"Unknown state: {state}. Use minimize, maximize, or restore." }, JsonOptions.Default);
+                throw new McpException($"Unknown state: {state}. Use minimize, maximize, or restore.");
         }
 
         return JsonSerializer.Serialize(new { result = "state_changed", state }, JsonOptions.Default);
@@ -233,7 +234,7 @@ public sealed class SessionTools
     public string GetAppMetadata()
     {
         if (!_session.IsAttached || _session.Application is null)
-            return JsonSerializer.Serialize(new { error = "No app attached." }, JsonOptions.Default);
+            throw new McpException("No app attached.");
 
         try
         {
@@ -257,7 +258,7 @@ public sealed class SessionTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -276,7 +277,7 @@ public sealed class SessionTools
     public string RestartApp()
     {
         if (!_session.IsAttached || _session.Application is null)
-            return JsonSerializer.Serialize(new { error = "No app attached." }, JsonOptions.Default);
+            throw new McpException("No app attached.");
 
         _audit.Record("wpf_restart_app");
 
@@ -285,7 +286,7 @@ public sealed class SessionTools
             var process = Process.GetProcessById(_session.Application.ProcessId);
             var exePath = process.MainModule?.FileName;
             if (string.IsNullOrEmpty(exePath))
-                return JsonSerializer.Serialize(new { error = "Cannot determine executable path." }, JsonOptions.Default);
+                throw new McpException("Cannot determine executable path.");
 
             _session.Application.Close();
             Thread.Sleep(1000);
@@ -296,7 +297,7 @@ public sealed class SessionTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 
@@ -304,7 +305,7 @@ public sealed class SessionTools
     public string KillApp()
     {
         if (!_session.IsAttached || _session.Application is null)
-            return JsonSerializer.Serialize(new { error = "No app attached." }, JsonOptions.Default);
+            throw new McpException("No app attached.");
 
         _audit.Record("wpf_kill_app");
 
@@ -316,7 +317,7 @@ public sealed class SessionTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 

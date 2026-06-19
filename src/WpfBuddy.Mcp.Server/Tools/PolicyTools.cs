@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
@@ -119,12 +120,12 @@ public sealed class PolicyTools
         lock (_policyLock)
         {
             if (!_currentPolicy.AllowDestructive)
-                return JsonSerializer.Serialize(new { error = "Destructive actions are disabled by policy. Enable via wpf_set_policy(allowDestructive: true)." }, JsonOptions.Default);
+                throw new McpException("Destructive actions are disabled by policy. Enable via wpf_set_policy(allowDestructive: true).");
         }
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         try
         {
@@ -150,7 +151,7 @@ public sealed class PolicyTools
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            throw new McpException(ex.Message);
         }
     }
 

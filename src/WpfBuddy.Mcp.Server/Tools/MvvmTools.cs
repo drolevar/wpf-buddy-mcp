@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Services;
 
@@ -162,7 +163,7 @@ public sealed class MvvmTools
     }
 
     private static string Error(string message) =>
-        JsonSerializer.Serialize(new { error = message }, JsonOptions.Default);
+        throw new McpException(message);
 
     private class CommandInfo
     {

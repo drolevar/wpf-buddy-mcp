@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
@@ -30,7 +31,7 @@ public sealed class SelectorTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name, ControlType = controlType };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         var selector = _selectors.BuildSelector(element);
         return JsonSerializer.Serialize(selector, JsonOptions.Default);
@@ -153,7 +154,7 @@ public sealed class SelectorTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         var ranked = _selectors.RankSelectors(element);
         var result = ranked.Select(r => new
@@ -265,7 +266,7 @@ public sealed class SelectorTools
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+            throw new McpException("Element not found.");
 
         var candidates = new List<object>();
         var elemAutomationId = element.Properties.AutomationId.ValueOrDefault;

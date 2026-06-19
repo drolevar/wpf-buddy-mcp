@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Services;
 
@@ -65,13 +66,9 @@ public sealed class ProbeTools
                     connected = await _probe.ConnectAsync(pipes[0]);
                     return JsonSerializer.Serialize(new { connected, pipeName = _probe.PipeName, autoDiscovered = true }, JsonOptions.Default);
                 }
-                return JsonSerializer.Serialize(new
-                {
-                    error = pipes.Count == 0
-                        ? "No session attached and no probe pipes found. Attach to an app (wpf_attach) or pass an explicit pipeName."
-                        : "No session attached and multiple probe pipes found. Pass an explicit pipeName.",
-                    candidates = pipes
-                }, JsonOptions.Default);
+                throw new McpException(pipes.Count == 0
+                    ? "No session attached and no probe pipes found. Attach to an app (wpf_attach) or pass an explicit pipeName."
+                    : "No session attached and multiple probe pipes found. Pass an explicit pipeName.");
             }
             _logger.LogInformation("wpf_probe_connect: connecting to probe for pid {Pid}", pid);
             connected = await _probe.ConnectAsync(pid.Value);

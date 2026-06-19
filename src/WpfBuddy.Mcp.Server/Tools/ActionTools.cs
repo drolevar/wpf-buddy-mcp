@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using FlaUI.Core.Input;
 using FlaUI.Core.WindowsAPI;
+using ModelContextProtocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
@@ -656,5 +657,5 @@ public sealed class ActionTools
         JsonSerializer.Serialize(new { result }, JsonOptions.Default);
 
     private static string Error(string message) =>
-        JsonSerializer.Serialize(new { error = message }, JsonOptions.Default);
+        throw new McpException(message);
 }
