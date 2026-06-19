@@ -23,8 +23,8 @@ public sealed class TestGenerationTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_export_page_object"), Description("Generate Page Object / Screen Object class from current window.")]
-    public string ExportPageObject(string? className = null)
+    [McpServerTool(Name = "wpf_export_page_object", ReadOnly = true), Description("Generate Page Object / Screen Object class from current window.")]
+    public string ExportPageObject([Description("Optional class name for the generated Page Object (a 'Page' suffix is appended). Defaults to a sanitized form of the active window title.")] string? className = null)
     {
         _audit.Record("wpf_export_page_object");
         var window = _session.ActiveWindow;
@@ -62,7 +62,7 @@ public sealed class TestGenerationTools
         return JsonSerializer.Serialize(new { language = "csharp", className = $"{name}Page", code = sb.ToString() }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_export_selectors"), Description("Generate selector constants for all identifiable elements.")]
+    [McpServerTool(Name = "wpf_export_selectors", ReadOnly = true), Description("Generate selector constants for all identifiable elements.")]
     public string ExportSelectors()
     {
         _audit.Record("wpf_export_selectors");
@@ -84,7 +84,7 @@ public sealed class TestGenerationTools
         return JsonSerializer.Serialize(new { language = "csharp", elementCount = withIds.Count, code = sb.ToString() }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_export_assertions"), Description("Generate assertion helper methods for current form state.")]
+    [McpServerTool(Name = "wpf_export_assertions", ReadOnly = true), Description("Generate assertion helper methods for current form state.")]
     public string ExportAssertions()
     {
         _audit.Record("wpf_export_assertions");
@@ -111,8 +111,8 @@ public sealed class TestGenerationTools
         return JsonSerializer.Serialize(new { language = "csharp", code = sb.ToString() }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_export_test_project"), Description("Generate full test project structure with csproj and base classes.")]
-    public string ExportTestProject(string projectName = "UiTests")
+    [McpServerTool(Name = "wpf_export_test_project", ReadOnly = true), Description("Generate full test project structure with csproj and base classes.")]
+    public string ExportTestProject([Description("Name for the generated test project; used for the .csproj file name and root namespace. Optional, defaults to 'UiTests'.")] string projectName = "UiTests")
     {
         _audit.Record("wpf_export_test_project");
 
@@ -166,7 +166,7 @@ public abstract class UiTestBase : IDisposable
         }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_generate_smoke_test"), Description("Generate smoke test from current window structure.")]
+    [McpServerTool(Name = "wpf_generate_smoke_test", ReadOnly = true), Description("Generate smoke test from current window structure.")]
     public string GenerateSmokeTest()
     {
         _audit.Record("wpf_generate_smoke_test");
@@ -211,7 +211,7 @@ public abstract class UiTestBase : IDisposable
         return JsonSerializer.Serialize(new { language = "csharp", framework = "xunit", code = sb.ToString() }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_generate_accessibility_test"), Description("Generate accessibility test checking AutomationProperties.")]
+    [McpServerTool(Name = "wpf_generate_accessibility_test", ReadOnly = true), Description("Generate accessibility test checking AutomationProperties.")]
     public string GenerateAccessibilityTest()
     {
         _audit.Record("wpf_generate_accessibility_test");
@@ -269,8 +269,8 @@ public abstract class UiTestBase : IDisposable
         return JsonSerializer.Serialize(new { language = "csharp", framework = "xunit", code = sb.ToString() }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_generate_regression_test"), Description("Generate regression test from recording with assertions at checkpoints.")]
-    public string GenerateRegressionTest(string workflowJson)
+    [McpServerTool(Name = "wpf_generate_regression_test", ReadOnly = true), Description("Generate regression test from recording with assertions at checkpoints.")]
+    public string GenerateRegressionTest([Description("Required. JSON of a recorded workflow (RecordingModel), e.g. the output of a recording session, used as the source of steps and checkpoints for the generated test.")] string workflowJson)
     {
         _audit.Record("wpf_generate_regression_test");
         try

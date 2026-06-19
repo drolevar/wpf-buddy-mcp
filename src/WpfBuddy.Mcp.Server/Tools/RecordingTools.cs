@@ -20,8 +20,8 @@ public sealed class RecordingTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_record_start"), Description("Start recording UI actions.")]
-    public string RecordStart(string name = "Untitled Recording")
+    [McpServerTool(Name = "wpf_record_start", Destructive = false), Description("Start recording UI actions.")]
+    public string RecordStart([Description("Friendly label stored on the recording; defaults to 'Untitled Recording'. Optional.")] string name = "Untitled Recording")
     {
         _audit.Record("wpf_record_start");
         try
@@ -35,7 +35,7 @@ public sealed class RecordingTools
         }
     }
 
-    [McpServerTool(Name = "wpf_record_stop"), Description("Stop recording and return workflow JSON.")]
+    [McpServerTool(Name = "wpf_record_stop", Destructive = false), Description("Stop recording and return workflow JSON.")]
     public string RecordStop()
     {
         _audit.Record("wpf_record_stop");
@@ -50,8 +50,8 @@ public sealed class RecordingTools
         }
     }
 
-    [McpServerTool(Name = "wpf_replay"), Description("Replay recorded workflow JSON.")]
-    public string Replay(string workflowJson)
+    [McpServerTool(Name = "wpf_replay", Destructive = true), Description("Replay recorded workflow JSON.")]
+    public string Replay([Description("Required. Full recorded workflow as JSON (a RecordingModel with a non-empty Steps array) to execute against the live app.")] string workflowJson)
     {
         _audit.Record("wpf_replay");
         try
@@ -91,8 +91,8 @@ public sealed class RecordingTools
         }
     }
 
-    [McpServerTool(Name = "wpf_validate_recording"), Description("Check recording for brittle selectors and missing waits.")]
-    public string ValidateRecording(string workflowJson)
+    [McpServerTool(Name = "wpf_validate_recording", ReadOnly = true), Description("Check recording for brittle selectors and missing waits.")]
+    public string ValidateRecording([Description("Required. Recorded workflow JSON (RecordingModel) to analyze for brittle selectors, missing identifiers, and index-path usage.")] string workflowJson)
     {
         _audit.Record("wpf_validate_recording");
         try
@@ -141,8 +141,8 @@ public sealed class RecordingTools
         }
     }
 
-    [McpServerTool(Name = "wpf_export_test"), Description("Generate xUnit + FlaUI test code from recording JSON.")]
-    public string ExportTest(string workflowJson)
+    [McpServerTool(Name = "wpf_export_test", ReadOnly = true), Description("Generate xUnit + FlaUI test code from recording JSON.")]
+    public string ExportTest([Description("Required. Recorded workflow JSON (RecordingModel) to convert into xUnit + FlaUI C# test source.")] string workflowJson)
     {
         _audit.Record("wpf_export_test");
         try
@@ -160,8 +160,8 @@ public sealed class RecordingTools
         }
     }
 
-    [McpServerTool(Name = "wpf_export_recording"), Description("Export current or provided workflow as JSON.")]
-    public string ExportRecording(string? workflowJson = null)
+    [McpServerTool(Name = "wpf_export_recording", ReadOnly = true), Description("Export current or provided workflow as JSON.")]
+    public string ExportRecording([Description("Optional. Workflow JSON to echo back; when omitted, exports the most recently completed recording.")] string? workflowJson = null)
     {
         _audit.Record("wpf_export_recording");
 
@@ -174,8 +174,8 @@ public sealed class RecordingTools
         return JsonSerializer.Serialize(new { error = "No recording available. Start and stop a recording first." }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_import_recording"), Description("Load and validate workflow JSON.")]
-    public string ImportRecording(string workflowJson)
+    [McpServerTool(Name = "wpf_import_recording", ReadOnly = true), Description("Load and validate workflow JSON.")]
+    public string ImportRecording([Description("Required. Workflow JSON (RecordingModel) to parse and validate; returns name, step count, and schema version.")] string workflowJson)
     {
         _audit.Record("wpf_import_recording");
         try
@@ -198,7 +198,7 @@ public sealed class RecordingTools
         }
     }
 
-    [McpServerTool(Name = "wpf_record_pause"), Description("Pause the current recording.")]
+    [McpServerTool(Name = "wpf_record_pause", Destructive = false, Idempotent = true), Description("Pause the current recording.")]
     public string RecordPause()
     {
         _audit.Record("wpf_record_pause");
@@ -209,7 +209,7 @@ public sealed class RecordingTools
         return JsonSerializer.Serialize(new { result = "recording_paused" }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_record_resume"), Description("Resume a paused recording.")]
+    [McpServerTool(Name = "wpf_record_resume", Destructive = false, Idempotent = true), Description("Resume a paused recording.")]
     public string RecordResume()
     {
         _audit.Record("wpf_record_resume");
@@ -217,8 +217,9 @@ public sealed class RecordingTools
         return JsonSerializer.Serialize(new { result = "recording_resumed" }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_record_step"), Description("Manually add a named step/checkpoint to the recording.")]
-    public string RecordStep(string stepName, string? notes = null)
+    [McpServerTool(Name = "wpf_record_step", Destructive = false), Description("Manually add a named step/checkpoint to the recording.")]
+    public string RecordStep([Description("Required. Label for the checkpoint step inserted into the recording.")] string stepName,
+                             [Description("Optional free-text notes stored on the checkpoint step.")] string? notes = null)
     {
         _audit.Record("wpf_record_step");
         if (!_recording.IsRecording)
@@ -235,8 +236,11 @@ public sealed class RecordingTools
         return JsonSerializer.Serialize(new { result = "step_added", name = stepName }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_record_assertion"), Description("Add assertion from current UI state to the recording.")]
-    public string RecordAssertion(string assertType, string? automationId = null, string? name = null, string? expectedValue = null)
+    [McpServerTool(Name = "wpf_record_assertion", Destructive = false), Description("Add assertion from current UI state to the recording.")]
+    public string RecordAssertion([Description("Required. Assertion kind to record. Allowed values: exists, not_exists, enabled, disabled, visible.")] string assertType,
+                                  [Description("AutomationId of the target element. Preferred selector; use when available.")] string? automationId = null,
+                                  [Description("Element Name/content; used when automationId is omitted.")] string? name = null,
+                                  [Description("Optional expected value for the assertion (e.g. expected text/value to compare against).")] string? expectedValue = null)
     {
         _audit.Record("wpf_record_assertion");
         if (!_recording.IsRecording)
@@ -253,8 +257,10 @@ public sealed class RecordingTools
         return JsonSerializer.Serialize(new { result = "assertion_added", type = assertType }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_replay_step"), Description("Replay one step from a recording by index or name.")]
-    public string ReplayStep(string workflowJson, int? stepIndex = null, string? stepName = null)
+    [McpServerTool(Name = "wpf_replay_step", Destructive = true), Description("Replay one step from a recording by index or name.")]
+    public string ReplayStep([Description("Required. Recorded workflow JSON (RecordingModel) containing the step to replay.")] string workflowJson,
+                             [Description("Zero-based index of the step to replay. Provide this or stepName; stepIndex takes precedence if both are set.")] int? stepIndex = null,
+                             [Description("Name of the step to replay; used when stepIndex is omitted.")] string? stepName = null)
     {
         _audit.Record("wpf_replay_step");
         try
@@ -291,8 +297,8 @@ public sealed class RecordingTools
         }
     }
 
-    [McpServerTool(Name = "wpf_optimize_recording"), Description("Replace sleeps/coordinates with waits/semantic selectors in a recording.")]
-    public string OptimizeRecording(string workflowJson)
+    [McpServerTool(Name = "wpf_optimize_recording", ReadOnly = true), Description("Replace sleeps/coordinates with waits/semantic selectors in a recording.")]
+    public string OptimizeRecording([Description("Required. Recorded workflow JSON (RecordingModel) to optimize; returns a hardened copy with stronger selectors and coordinate fallback disabled.")] string workflowJson)
     {
         _audit.Record("wpf_optimize_recording");
         try
@@ -339,8 +345,9 @@ public sealed class RecordingTools
         }
     }
 
-    [McpServerTool(Name = "wpf_explain_replay_failure"), Description("Diagnose why a replay step failed.")]
-    public string ExplainReplayFailure(string workflowJson, int failedStepIndex)
+    [McpServerTool(Name = "wpf_explain_replay_failure", ReadOnly = true), Description("Diagnose why a replay step failed.")]
+    public string ExplainReplayFailure([Description("Required. Recorded workflow JSON (RecordingModel) whose step failed during replay.")] string workflowJson,
+                                       [Description("Required. Zero-based index of the failed step to diagnose against the current UI.")] int failedStepIndex)
     {
         _audit.Record("wpf_explain_replay_failure");
         try
@@ -410,8 +417,8 @@ public sealed class RecordingTools
         }
     }
 
-    [McpServerTool(Name = "wpf_snapshot_checkpoint"), Description("Capture named UI state checkpoint for comparison.")]
-    public string SnapshotCheckpoint(string checkpointName)
+    [McpServerTool(Name = "wpf_snapshot_checkpoint", ReadOnly = true), Description("Capture named UI state checkpoint for comparison.")]
+    public string SnapshotCheckpoint([Description("Required. Label for the captured UI-state checkpoint, used to reference it in later comparisons.")] string checkpointName)
     {
         _audit.Record("wpf_snapshot_checkpoint");
         try

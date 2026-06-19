@@ -18,7 +18,7 @@ public sealed class DiagnosticsTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_get_diagnostics"), Description("Combined report: missing AutomationIds, duplicates, missing names, selector quality.")]
+    [McpServerTool(Name = "wpf_get_diagnostics", ReadOnly = true), Description("Combined report: missing AutomationIds, duplicates, missing names, selector quality.")]
     public string GetDiagnostics()
     {
         _audit.Record("wpf_get_diagnostics");
@@ -62,7 +62,7 @@ public sealed class DiagnosticsTools
         return JsonSerializer.Serialize(report, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_analyze_automation_quality"), Description("Find missing AutomationIds, missing names, duplicate IDs, invisible focusable controls.")]
+    [McpServerTool(Name = "wpf_analyze_automation_quality", ReadOnly = true), Description("Find missing AutomationIds, missing names, duplicate IDs, invisible focusable controls.")]
     public string AnalyzeAutomationQuality()
     {
         _audit.Record("wpf_analyze_automation_quality");
@@ -96,7 +96,7 @@ public sealed class DiagnosticsTools
         return JsonSerializer.Serialize(report, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_generate_session_report"), Description("Summarize actions, snapshots, diagnostics, failures for current session.")]
+    [McpServerTool(Name = "wpf_generate_session_report", ReadOnly = true), Description("Summarize actions, snapshots, diagnostics, failures for current session.")]
     public string GenerateSessionReport()
     {
         _audit.Record("wpf_generate_session_report");
@@ -117,7 +117,7 @@ public sealed class DiagnosticsTools
         return JsonSerializer.Serialize(report, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_audit_log"), Description("Return actions performed in current session.")]
+    [McpServerTool(Name = "wpf_get_audit_log", ReadOnly = true), Description("Return actions performed in current session.")]
     public string GetAuditLog()
     {
         var entries = _audit.GetEntries();

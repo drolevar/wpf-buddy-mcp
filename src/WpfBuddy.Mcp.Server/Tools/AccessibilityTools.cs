@@ -22,8 +22,8 @@ public sealed class AccessibilityTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_accessibility_snapshot"), Description("Return accessibility-oriented UI tree with accessibility metadata.")]
-    public string AccessibilitySnapshot(int maxDepth = 4)
+    [McpServerTool(Name = "wpf_accessibility_snapshot", ReadOnly = true), Description("Return accessibility-oriented UI tree with accessibility metadata.")]
+    public string AccessibilitySnapshot([Description("Maximum depth of the UI tree to traverse from the active window (number of descendant levels). Optional; defaults to 4.")] int maxDepth = 4)
     {
         _audit.Record("wpf_accessibility_snapshot");
         var window = _session.ActiveWindow;
@@ -43,7 +43,7 @@ public sealed class AccessibilityTools
         }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_check_missing_names"), Description("Find controls missing accessible names.")]
+    [McpServerTool(Name = "wpf_check_missing_names", ReadOnly = true), Description("Find controls missing accessible names.")]
     public string CheckMissingNames()
     {
         _audit.Record("wpf_check_missing_names");
@@ -66,7 +66,7 @@ public sealed class AccessibilityTools
         }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_check_missing_help_text"), Description("Find controls missing helpful descriptions/HelpText.")]
+    [McpServerTool(Name = "wpf_check_missing_help_text", ReadOnly = true), Description("Find controls missing helpful descriptions/HelpText.")]
     public string CheckMissingHelpText()
     {
         _audit.Record("wpf_check_missing_help_text");
@@ -98,7 +98,7 @@ public sealed class AccessibilityTools
         return JsonSerializer.Serialize(new { missingHelpTextCount = missing.Count, elements = missing.Take(50).ToList() }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_check_tab_order"), Description("Analyze keyboard navigation/tab order.")]
+    [McpServerTool(Name = "wpf_check_tab_order", ReadOnly = true), Description("Analyze keyboard navigation/tab order.")]
     public string CheckTabOrder()
     {
         _audit.Record("wpf_check_tab_order");
@@ -137,7 +137,7 @@ public sealed class AccessibilityTools
         }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_check_keyboard_access"), Description("Find controls unreachable by keyboard.")]
+    [McpServerTool(Name = "wpf_check_keyboard_access", ReadOnly = true), Description("Find controls unreachable by keyboard.")]
     public string CheckKeyboardAccess()
     {
         _audit.Record("wpf_check_keyboard_access");
@@ -168,7 +168,7 @@ public sealed class AccessibilityTools
         return JsonSerializer.Serialize(new { unreachableCount = unreachable.Count, elements = unreachable.Take(50).ToList() }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_check_control_patterns"), Description("Ensure controls expose expected UIA patterns.")]
+    [McpServerTool(Name = "wpf_check_control_patterns", ReadOnly = true), Description("Ensure controls expose expected UIA patterns.")]
     public string CheckControlPatterns()
     {
         _audit.Record("wpf_check_control_patterns");
@@ -223,7 +223,7 @@ public sealed class AccessibilityTools
         return JsonSerializer.Serialize(new { issueCount = issues.Count, issues = issues.Take(50).ToList() }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_check_custom_controls"), Description("Flag custom controls with poor automation peer exposure.")]
+    [McpServerTool(Name = "wpf_check_custom_controls", ReadOnly = true), Description("Flag custom controls with poor automation peer exposure.")]
     public string CheckCustomControls()
     {
         _audit.Record("wpf_check_custom_controls");
@@ -271,7 +271,7 @@ public sealed class AccessibilityTools
         return JsonSerializer.Serialize(new { customControlCount = customControls.Count, controls = customControls.Take(30).ToList() }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_generate_accessibility_report"), Description("Generate comprehensive accessibility/testability report.")]
+    [McpServerTool(Name = "wpf_generate_accessibility_report", ReadOnly = true), Description("Generate comprehensive accessibility/testability report.")]
     public string GenerateAccessibilityReport()
     {
         _audit.Record("wpf_generate_accessibility_report");

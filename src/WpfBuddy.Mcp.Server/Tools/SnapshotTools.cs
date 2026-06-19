@@ -20,16 +20,18 @@ public sealed class SnapshotTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_snapshot"), Description("Return compact UI tree for current window.")]
-    public string Snapshot(int maxDepth = 5)
+    [McpServerTool(Name = "wpf_snapshot", ReadOnly = true), Description("Return compact UI tree for current window.")]
+    public string Snapshot([Description("Maximum tree depth to traverse from the window root. Higher values return more nested elements at greater cost. Optional; default 5.")] int maxDepth = 5)
     {
         _audit.Record("wpf_snapshot");
         var snapshot = _uia.CaptureSnapshot(maxDepth: maxDepth);
         return JsonSerializer.Serialize(snapshot, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_snapshot_element"), Description("Return subtree for one element by automation id or name.")]
-    public string SnapshotElement(string? automationId = null, string? name = null, int maxDepth = 3)
+    [McpServerTool(Name = "wpf_snapshot_element", ReadOnly = true), Description("Return subtree for one element by automation id or name.")]
+    public string SnapshotElement([Description("AutomationId of the target element; preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null,
+        [Description("Maximum subtree depth to traverse below the matched element. Optional; default 3.")] int maxDepth = 3)
     {
         _audit.Record("wpf_snapshot_element", new ElementCriteria { AutomationId = automationId, Name = name });
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -41,8 +43,11 @@ public sealed class SnapshotTools
         return JsonSerializer.Serialize(snapshot, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_query"), Description("Find elements by AutomationId, name, control type, or class name. Returns first match.")]
-    public string Query(string? automationId = null, string? name = null, string? controlType = null, string? className = null)
+    [McpServerTool(Name = "wpf_query", ReadOnly = true), Description("Find elements by AutomationId, name, control type, or class name. Returns first match.")]
+    public string Query([Description("AutomationId to match; preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content to match; used when automationId is omitted.")] string? name = null,
+        [Description("UIA ControlType to match, e.g. Button, Edit, ComboBox, ListItem, CheckBox.")] string? controlType = null,
+        [Description("WPF/Win32 class name to match, e.g. TextBox, Window.")] string? className = null)
     {
         _audit.Record("wpf_query");
         var elements = _uia.QueryElements(automationId, name, controlType, className);
@@ -53,16 +58,21 @@ public sealed class SnapshotTools
         return JsonSerializer.Serialize(first, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_query_all"), Description("Find all elements matching criteria.")]
-    public string QueryAll(string? automationId = null, string? name = null, string? controlType = null, string? className = null)
+    [McpServerTool(Name = "wpf_query_all", ReadOnly = true), Description("Find all elements matching criteria.")]
+    public string QueryAll([Description("AutomationId to match; preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content to match; used when automationId is omitted.")] string? name = null,
+        [Description("UIA ControlType to match, e.g. Button, Edit, ComboBox, ListItem, CheckBox.")] string? controlType = null,
+        [Description("WPF/Win32 class name to match, e.g. TextBox, Window.")] string? className = null)
     {
         _audit.Record("wpf_query_all");
         var elements = _uia.QueryElements(automationId, name, controlType, className);
         return JsonSerializer.Serialize(elements, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_element"), Description("Resolve a selector to one element and return its properties.")]
-    public string GetElement(string? automationId = null, string? name = null, string? controlType = null)
+    [McpServerTool(Name = "wpf_get_element", ReadOnly = true), Description("Resolve a selector to one element and return its properties.")]
+    public string GetElement([Description("AutomationId of the target element; preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null,
+        [Description("UIA ControlType to disambiguate the match, e.g. Button, Edit, ComboBox.")] string? controlType = null)
     {
         _audit.Record("wpf_get_element");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name, ControlType = controlType };
@@ -74,8 +84,9 @@ public sealed class SnapshotTools
         return JsonSerializer.Serialize(mapped, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_properties"), Description("Get full UIA properties for an element.")]
-    public string GetProperties(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_get_properties", ReadOnly = true), Description("Get full UIA properties for an element.")]
+    public string GetProperties([Description("AutomationId of the target element; preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_get_properties");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -103,8 +114,9 @@ public sealed class SnapshotTools
         return JsonSerializer.Serialize(props, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_patterns"), Description("List supported UIA patterns for an element.")]
-    public string GetPatterns(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_get_patterns", ReadOnly = true), Description("List supported UIA patterns for an element.")]
+    public string GetPatterns([Description("AutomationId of the target element; preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_get_patterns");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -116,8 +128,9 @@ public sealed class SnapshotTools
         return JsonSerializer.Serialize(new { patterns = mapped.Patterns }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_text"), Description("Get visible text from element.")]
-    public string GetText(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_get_text", ReadOnly = true), Description("Get visible text from element.")]
+    public string GetText([Description("AutomationId of the target element; preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_get_text");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -137,8 +150,9 @@ public sealed class SnapshotTools
         return JsonSerializer.Serialize(new { text, value }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_value"), Description("Get value from TextBox, ComboBox, Slider, DatePicker, etc.")]
-    public string GetValue(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_get_value", ReadOnly = true), Description("Get value from TextBox, ComboBox, Slider, DatePicker, etc.")]
+    public string GetValue([Description("AutomationId of the target element; preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_get_value");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -159,8 +173,9 @@ public sealed class SnapshotTools
         return JsonSerializer.Serialize(new { value }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_state"), Description("Get element state: enabled, visible, focused, selected, expanded, checked, read-only, offscreen.")]
-    public string GetState(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_get_state", ReadOnly = true), Description("Get element state: enabled, visible, focused, selected, expanded, checked, read-only, offscreen.")]
+    public string GetState([Description("AutomationId of the target element; preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_get_state");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -197,8 +212,9 @@ public sealed class SnapshotTools
         return JsonSerializer.Serialize(state, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_bounds"), Description("Get screen/window-relative bounding box for an element.")]
-    public string GetBounds(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_get_bounds", ReadOnly = true), Description("Get screen/window-relative bounding box for an element.")]
+    public string GetBounds([Description("AutomationId of the target element; preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_get_bounds");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -223,8 +239,9 @@ public sealed class SnapshotTools
         return JsonSerializer.Serialize(result, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_selection"), Description("Get selected item(s) from list/grid/tree/combo.")]
-    public string GetSelection(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_get_selection", ReadOnly = true), Description("Get selected item(s) from list/grid/tree/combo.")]
+    public string GetSelection([Description("AutomationId of the target element; preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_get_selection");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -253,8 +270,9 @@ public sealed class SnapshotTools
         }
     }
 
-    [McpServerTool(Name = "wpf_diff_snapshot"), Description("Compare two snapshots and report added/removed/changed elements.")]
-    public string DiffSnapshot(string beforeJson, string afterJson)
+    [McpServerTool(Name = "wpf_diff_snapshot", ReadOnly = true), Description("Compare two snapshots and report added/removed/changed elements.")]
+    public string DiffSnapshot([Description("Required. JSON of the earlier UI snapshot (as returned by wpf_snapshot) to diff from.")] string beforeJson,
+        [Description("Required. JSON of the later UI snapshot (as returned by wpf_snapshot) to diff against.")] string afterJson)
     {
         _audit.Record("wpf_diff_snapshot");
 
@@ -294,8 +312,9 @@ public sealed class SnapshotTools
         }
     }
 
-    [McpServerTool(Name = "wpf_watch_ui_changes"), Description("Monitor UI tree changes for a short interval and report differences.")]
-    public string WatchUiChanges(int durationMs = 3000, int pollIntervalMs = 500)
+    [McpServerTool(Name = "wpf_watch_ui_changes", ReadOnly = true), Description("Monitor UI tree changes for a short interval and report differences.")]
+    public string WatchUiChanges([Description("Total time to watch for changes, in milliseconds. Optional; default 3000.")] int durationMs = 3000,
+        [Description("Interval between successive snapshot polls, in milliseconds. Optional; default 500.")] int pollIntervalMs = 500)
     {
         _audit.Record("wpf_watch_ui_changes");
 

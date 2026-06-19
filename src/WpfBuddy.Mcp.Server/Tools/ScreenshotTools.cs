@@ -37,7 +37,7 @@ public sealed class ScreenshotTools
         Content = new List<Content> { new() { Type = "text", Text = message } }
     };
 
-    [McpServerTool(Name = "wpf_screenshot"), Description("Capture the attached window as a PNG image the model can view.")]
+    [McpServerTool(Name = "wpf_screenshot", ReadOnly = true), Description("Capture the attached window as a PNG image the model can view.")]
     public CallToolResponse Screenshot()
     {
         _audit.Record("wpf_screenshot");
@@ -51,8 +51,10 @@ public sealed class ScreenshotTools
         }
     }
 
-    [McpServerTool(Name = "wpf_screenshot_element"), Description("Capture the selected element as a PNG image the model can view.")]
-    public CallToolResponse ScreenshotElement(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_screenshot_element", ReadOnly = true), Description("Capture the selected element as a PNG image the model can view.")]
+    public CallToolResponse ScreenshotElement(
+        [Description("AutomationId of the target element; primary selector.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_screenshot_element");
         try
@@ -70,8 +72,9 @@ public sealed class ScreenshotTools
         }
     }
 
-    [McpServerTool(Name = "wpf_capture_failure_artifacts"), Description("Capture screenshot, snapshot, and diagnostics after a failure. Returns a text block of metadata plus the screenshot as a viewable image.")]
-    public CallToolResponse CaptureFailureArtifacts(string? failureDescription = null)
+    [McpServerTool(Name = "wpf_capture_failure_artifacts", ReadOnly = true), Description("Capture screenshot, snapshot, and diagnostics after a failure. Returns a text block of metadata plus the screenshot as a viewable image.")]
+    public CallToolResponse CaptureFailureArtifacts(
+        [Description("Optional human-readable description of the failure, recorded in the returned metadata.")] string? failureDescription = null)
     {
         _audit.Record("wpf_capture_failure_artifacts");
         try
@@ -108,8 +111,9 @@ public sealed class ScreenshotTools
         }
     }
 
-    [McpServerTool(Name = "wpf_annotate_screenshot"), Description("Capture the window with overlay boxes highlighting the given elements. Returns the annotated PNG as a viewable image.")]
-    public CallToolResponse AnnotateScreenshot(string[] automationIds)
+    [McpServerTool(Name = "wpf_annotate_screenshot", ReadOnly = true), Description("Capture the window with overlay boxes highlighting the given elements. Returns the annotated PNG as a viewable image.")]
+    public CallToolResponse AnnotateScreenshot(
+        [Description("AutomationIds of the elements to outline; each found element is drawn as a numbered red box.")] string[] automationIds)
     {
         _audit.Record("wpf_annotate_screenshot");
         try
@@ -149,7 +153,7 @@ public sealed class ScreenshotTools
         }
     }
 
-    [McpServerTool(Name = "wpf_get_cursor_position"), Description("Get current mouse cursor position (absolute screen coordinates).")]
+    [McpServerTool(Name = "wpf_get_cursor_position", ReadOnly = true), Description("Get current mouse cursor position (absolute screen coordinates).")]
     public string GetCursorPosition()
     {
         _audit.Record("wpf_get_cursor_position");
@@ -157,8 +161,10 @@ public sealed class ScreenshotTools
         return JsonSerializer.Serialize(new { x = pos.X, y = pos.Y }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_highlight_element"), Description("Flash-highlight an element for visual debugging. Returns bounds info.")]
-    public string HighlightElement(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_highlight_element", Destructive = false, Idempotent = true), Description("Flash-highlight an element for visual debugging. Returns bounds info.")]
+    public string HighlightElement(
+        [Description("AutomationId of the target element; primary selector.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_highlight_element");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -179,8 +185,10 @@ public sealed class ScreenshotTools
         }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_compare_screenshot"), Description("Pixel-compare two base64 PNG images and return difference percentage.")]
-    public string CompareScreenshot(string baselineBase64, string currentBase64)
+    [McpServerTool(Name = "wpf_compare_screenshot", ReadOnly = true), Description("Pixel-compare two base64 PNG images and return difference percentage.")]
+    public string CompareScreenshot(
+        [Description("Base64-encoded PNG of the baseline/reference image.")] string baselineBase64,
+        [Description("Base64-encoded PNG of the current image; must match the baseline's dimensions.")] string currentBase64)
     {
         _audit.Record("wpf_compare_screenshot");
         try

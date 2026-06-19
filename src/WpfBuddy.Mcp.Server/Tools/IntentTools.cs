@@ -25,8 +25,12 @@ public sealed class IntentTools
         _recording = recording;
     }
 
-    [McpServerTool(Name = "wpf_goal_execute"), Description("Execute a high-level goal by analyzing the current screen state and performing the needed actions adaptively. The AI decides the steps based on what's visible. Example goals: 'fill the form and save', 'navigate to Settings', 'select the first patient'.")]
-    public string GoalExecute(string goal, string? context = null, int maxSteps = 20, int delayMs = 300)
+    [McpServerTool(Name = "wpf_goal_execute", Destructive = true), Description("Execute a high-level goal by analyzing the current screen state and performing the needed actions adaptively. The AI decides the steps based on what's visible. Example goals: 'fill the form and save', 'navigate to Settings', 'select the first patient'.")]
+    public string GoalExecute(
+        [Description("Natural-language description of the high-level goal to accomplish, e.g. 'fill the form and save' or 'navigate to Settings'. Required.")] string goal,
+        [Description("Optional extra context to guide planning, such as data values or constraints. Omit if not needed.")] string? context = null,
+        [Description("Maximum number of action steps to attempt before stopping. Default 20.")] int maxSteps = 20,
+        [Description("Delay in milliseconds to wait after each action for the UI to update. Default 300.")] int delayMs = 300)
     {
         _audit.Record("wpf_goal_execute", parameters: new() { ["goal"] = goal });
         try
@@ -41,8 +45,10 @@ public sealed class IntentTools
         }
     }
 
-    [McpServerTool(Name = "wpf_goal_plan"), Description("Plan steps to achieve a goal WITHOUT executing them. Returns a proposed action plan based on current UI state. Useful for preview/dry-run.")]
-    public string GoalPlan(string goal, string? context = null)
+    [McpServerTool(Name = "wpf_goal_plan", ReadOnly = true), Description("Plan steps to achieve a goal WITHOUT executing them. Returns a proposed action plan based on current UI state. Useful for preview/dry-run.")]
+    public string GoalPlan(
+        [Description("Natural-language description of the goal to plan steps for. Required.")] string goal,
+        [Description("Optional extra context to guide planning. Omit if not needed.")] string? context = null)
     {
         _audit.Record("wpf_goal_plan", parameters: new() { ["goal"] = goal });
         try
@@ -69,8 +75,9 @@ public sealed class IntentTools
         }
     }
 
-    [McpServerTool(Name = "wpf_goal_verify"), Description("Verify that a goal's postcondition is met. Checks the current UI state against expected outcomes.")]
-    public string GoalVerify(string expectedOutcome)
+    [McpServerTool(Name = "wpf_goal_verify", ReadOnly = true), Description("Verify that a goal's postcondition is met. Checks the current UI state against expected outcomes.")]
+    public string GoalVerify(
+        [Description("Natural-language description of the expected outcome to verify against the current UI, e.g. 'no errors are shown' or 'the grid contains data'. Required.")] string expectedOutcome)
     {
         _audit.Record("wpf_goal_verify");
         try
@@ -85,8 +92,9 @@ public sealed class IntentTools
         }
     }
 
-    [McpServerTool(Name = "wpf_smart_fill"), Description("Intelligently fill a form based on field names and provided data. Maps data keys to UI fields by name/automationId similarity.")]
-    public string SmartFill(string dataJson)
+    [McpServerTool(Name = "wpf_smart_fill", Destructive = true), Description("Intelligently fill a form based on field names and provided data. Maps data keys to UI fields by name/automationId similarity.")]
+    public string SmartFill(
+        [Description("JSON object string mapping field names to values, e.g. '{\"FirstName\":\"John\",\"AgreeTos\":\"true\"}'. Keys are matched to fields by Name/AutomationId similarity. For CheckBox/RadioButton fields, values 'true'/'yes'/'1' mean checked, anything else unchecked. Required.")] string dataJson)
     {
         _audit.Record("wpf_smart_fill");
         try
@@ -175,8 +183,10 @@ public sealed class IntentTools
         }
     }
 
-    [McpServerTool(Name = "wpf_navigate_to"), Description("Navigate to a target screen/tab/page by name. Searches for navigation elements (tabs, menu items, buttons) matching the target and activates them.")]
-    public string NavigateTo(string target, int delayMs = 300)
+    [McpServerTool(Name = "wpf_navigate_to", Destructive = false, Idempotent = true), Description("Navigate to a target screen/tab/page by name. Searches for navigation elements (tabs, menu items, buttons) matching the target and activates them.")]
+    public string NavigateTo(
+        [Description("Name or AutomationId of the navigation target (tab, menu item, hyperlink, tree item, button, or list item). Matched first by exact equality, then by substring (case-insensitive). Required.")] string target,
+        [Description("Delay in milliseconds to wait after activating the target for the UI to update. Default 300.")] int delayMs = 300)
     {
         _audit.Record("wpf_navigate_to", parameters: new() { ["target"] = target });
         try

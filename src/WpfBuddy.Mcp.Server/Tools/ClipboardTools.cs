@@ -15,7 +15,7 @@ public sealed class ClipboardTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_get_clipboard"), Description("Get current clipboard text content.")]
+    [McpServerTool(Name = "wpf_get_clipboard", ReadOnly = true), Description("Get current clipboard text content.")]
     public string GetClipboard()
     {
         _audit.Record("wpf_get_clipboard");
@@ -34,8 +34,8 @@ public sealed class ClipboardTools
         }
     }
 
-    [McpServerTool(Name = "wpf_set_clipboard"), Description("Set clipboard text content.")]
-    public string SetClipboard(string text)
+    [McpServerTool(Name = "wpf_set_clipboard", Destructive = true, Idempotent = true), Description("Set clipboard text content.")]
+    public string SetClipboard([Description("Text to write to the system clipboard; overwrites any existing clipboard content.")] string text)
     {
         _audit.Record("wpf_set_clipboard");
         try
@@ -52,7 +52,7 @@ public sealed class ClipboardTools
         }
     }
 
-    [McpServerTool(Name = "wpf_clear_clipboard"), Description("Clear clipboard contents.")]
+    [McpServerTool(Name = "wpf_clear_clipboard", Destructive = true, Idempotent = true), Description("Clear clipboard contents.")]
     public string ClearClipboard()
     {
         _audit.Record("wpf_clear_clipboard");
@@ -70,7 +70,7 @@ public sealed class ClipboardTools
         }
     }
 
-    [McpServerTool(Name = "wpf_get_current_culture"), Description("Get current thread culture info.")]
+    [McpServerTool(Name = "wpf_get_current_culture", ReadOnly = true), Description("Get current thread culture info.")]
     public string GetCurrentCulture()
     {
         _audit.Record("wpf_get_current_culture");
@@ -85,7 +85,7 @@ public sealed class ClipboardTools
         }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_theme"), Description("Detect current Windows theme (dark/light) from registry.")]
+    [McpServerTool(Name = "wpf_get_theme", ReadOnly = true), Description("Detect current Windows theme (dark/light) from registry.")]
     public string GetTheme()
     {
         _audit.Record("wpf_get_theme");
@@ -108,7 +108,7 @@ public sealed class ClipboardTools
         }
     }
 
-    [McpServerTool(Name = "wpf_get_screen_info"), Description("Get screen resolution and DPI info.")]
+    [McpServerTool(Name = "wpf_get_screen_info", ReadOnly = true), Description("Get screen resolution and DPI info.")]
     public string GetScreenInfo()
     {
         _audit.Record("wpf_get_screen_info");

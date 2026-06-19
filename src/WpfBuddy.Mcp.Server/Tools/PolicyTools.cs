@@ -25,7 +25,7 @@ public sealed class PolicyTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_get_capabilities"), Description("List all available tool categories and their status.")]
+    [McpServerTool(Name = "wpf_get_capabilities", ReadOnly = true), Description("List all available tool categories and their status.")]
     public string GetCapabilities()
     {
         _audit.Record("wpf_get_capabilities");
@@ -56,8 +56,8 @@ public sealed class PolicyTools
         return JsonSerializer.Serialize(capabilities, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_set_policy"), Description("Set execution policy: allowDestructive, allowCoordinateFallback, timeoutMs, maxRetries.")]
-    public string SetPolicy(bool? allowDestructive = null, bool? allowCoordinateFallback = null, int? timeoutMs = null, int? maxRetries = null)
+    [McpServerTool(Name = "wpf_set_policy", Destructive = false, Idempotent = true), Description("Set execution policy: allowDestructive, allowCoordinateFallback, timeoutMs, maxRetries.")]
+    public string SetPolicy([Description("If true, allow destructive actions (e.g. delete/clear/overwrite) to be executed. Omit to leave unchanged.")] bool? allowDestructive = null, [Description("If true, allow falling back to coordinate-based interaction when UIA element targeting fails. Omit to leave unchanged.")] bool? allowCoordinateFallback = null, [Description("Default operation timeout in milliseconds. Omit to leave unchanged.")] int? timeoutMs = null, [Description("Maximum number of retry attempts for an operation. Omit to leave unchanged.")] int? maxRetries = null)
     {
         _audit.Record("wpf_set_policy");
         lock (_policyLock)
@@ -71,15 +71,15 @@ public sealed class PolicyTools
         return JsonSerializer.Serialize(new { result = "policy_updated", policy = _currentPolicy }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_policy"), Description("Get current execution policy.")]
+    [McpServerTool(Name = "wpf_get_policy", ReadOnly = true), Description("Get current execution policy.")]
     public string GetPolicy()
     {
         _audit.Record("wpf_get_policy");
         return JsonSerializer.Serialize(new { policy = _currentPolicy }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_preview_action"), Description("Show what an action would do without executing it (dry-run).")]
-    public string PreviewAction(string action, string? automationId = null, string? name = null, string? value = null)
+    [McpServerTool(Name = "wpf_preview_action", ReadOnly = true), Description("Show what an action would do without executing it (dry-run).")]
+    public string PreviewAction([Description("Action to preview. One of: click, invoke, set_value, toggle.")] string action, [Description("AutomationId of the target element. Preferred selector.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("Value to apply for set_value previews; ignored for other actions.")] string? value = null)
     {
         _audit.Record("wpf_preview_action");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -109,8 +109,8 @@ public sealed class PolicyTools
         return JsonSerializer.Serialize(preview, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_confirm_action"), Description("Confirm and execute a previously previewed action.")]
-    public string ConfirmAction(string action, string? automationId = null, string? name = null, string? value = null)
+    [McpServerTool(Name = "wpf_confirm_action", Destructive = true), Description("Confirm and execute a previously previewed action.")]
+    public string ConfirmAction([Description("Action to execute. One of: click, invoke, set_value, toggle.")] string action, [Description("AutomationId of the target element. Preferred selector.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("Value to set when action is set_value; ignored for other actions.")] string? value = null)
     {
         _audit.Record("wpf_confirm_action");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -146,7 +146,7 @@ public sealed class PolicyTools
         }
     }
 
-    [McpServerTool(Name = "wpf_clear_audit_log"), Description("Clear the audit log.")]
+    [McpServerTool(Name = "wpf_clear_audit_log", Destructive = true, Idempotent = true), Description("Clear the audit log.")]
     public string ClearAuditLog()
     {
         _audit.Record("wpf_clear_audit_log");
@@ -154,8 +154,8 @@ public sealed class PolicyTools
         return JsonSerializer.Serialize(new { result = "audit_log_cleared" }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_redact_snapshot"), Description("Return a snapshot with sensitive fields redacted.")]
-    public string RedactSnapshot(int maxDepth = 5)
+    [McpServerTool(Name = "wpf_redact_snapshot", ReadOnly = true), Description("Return a snapshot with sensitive fields redacted.")]
+    public string RedactSnapshot([Description("Maximum depth of the UI element tree to capture. Defaults to 5.")] int maxDepth = 5)
     {
         _audit.Record("wpf_redact_snapshot");
         var snapshot = _uia.CaptureSnapshot(maxDepth: maxDepth);
@@ -163,8 +163,8 @@ public sealed class PolicyTools
         return JsonSerializer.Serialize(snapshot, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_set_redaction_rules"), Description("Add redaction rules for sensitive AutomationId patterns.")]
-    public string SetRedactionRules(string[] patterns)
+    [McpServerTool(Name = "wpf_set_redaction_rules", Destructive = false), Description("Add redaction rules for sensitive AutomationId patterns.")]
+    public string SetRedactionRules([Description("Substring patterns matched (case-insensitive) against element AutomationId or Name; matching elements have their Name and Value redacted. Patterns are added to the existing rule set; duplicates are ignored.")] string[] patterns)
     {
         _audit.Record("wpf_set_redaction_rules");
         lock (_redactionLock)
@@ -178,7 +178,7 @@ public sealed class PolicyTools
         }
     }
 
-    [McpServerTool(Name = "wpf_get_redaction_rules"), Description("List current redaction rules.")]
+    [McpServerTool(Name = "wpf_get_redaction_rules", ReadOnly = true), Description("List current redaction rules.")]
     public string GetRedactionRules()
     {
         _audit.Record("wpf_get_redaction_rules");

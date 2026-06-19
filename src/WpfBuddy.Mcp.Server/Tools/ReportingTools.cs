@@ -21,7 +21,7 @@ public sealed class ReportingTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_generate_testability_report"), Description("Analyze current window and produce testability report with scores.")]
+    [McpServerTool(Name = "wpf_generate_testability_report", ReadOnly = true), Description("Analyze current window and produce testability report with scores.")]
     public string GenerateTestabilityReport()
     {
         _audit.Record("wpf_generate_testability_report");
@@ -64,7 +64,7 @@ public sealed class ReportingTools
         }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_generate_diagnostics_report"), Description("Generate full diagnostics report including audit log, session, and UI state.")]
+    [McpServerTool(Name = "wpf_generate_diagnostics_report", ReadOnly = true), Description("Generate full diagnostics report including audit log, session, and UI state.")]
     public string GenerateDiagnosticsReport()
     {
         _audit.Record("wpf_generate_diagnostics_report");
@@ -92,7 +92,7 @@ public sealed class ReportingTools
         }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_export_artifacts"), Description("Bundle session artifacts (audit log, last snapshot) as JSON.")]
+    [McpServerTool(Name = "wpf_export_artifacts", ReadOnly = true), Description("Bundle session artifacts (audit log, last snapshot) as JSON.")]
     public string ExportArtifacts()
     {
         _audit.Record("wpf_export_artifacts");
@@ -122,8 +122,8 @@ public sealed class ReportingTools
         }
     }
 
-    [McpServerTool(Name = "wpf_import_artifacts"), Description("Load artifacts JSON bundle and return summary.")]
-    public string ImportArtifacts(string artifactsJson)
+    [McpServerTool(Name = "wpf_import_artifacts", ReadOnly = true), Description("Load artifacts JSON bundle and return summary.")]
+    public string ImportArtifacts([Description("Artifacts bundle as a JSON string (as produced by wpf_export_artifacts); parsed read-only to summarize its session, auditLog, and snapshot contents.")] string artifactsJson)
     {
         _audit.Record("wpf_import_artifacts");
         try
@@ -154,8 +154,8 @@ public sealed class ReportingTools
         }
     }
 
-    [McpServerTool(Name = "wpf_compare_reports"), Description("Compare two testability reports and highlight changes.")]
-    public string CompareReports(string reportAJson, string reportBJson)
+    [McpServerTool(Name = "wpf_compare_reports", ReadOnly = true), Description("Compare two testability reports and highlight changes.")]
+    public string CompareReports([Description("Baseline testability report as a JSON string (the 'before' report, as produced by wpf_generate_testability_report). Required.")] string reportAJson, [Description("Comparison testability report as a JSON string (the 'after' report). Required. Deltas are computed as report B minus report A.")] string reportBJson)
     {
         _audit.Record("wpf_compare_reports");
         try

@@ -22,8 +22,8 @@ public sealed class ActionTools
         _recording = recording;
     }
 
-    [McpServerTool(Name = "wpf_invoke"), Description("Invoke Button, MenuItem, Hyperlink through UIA InvokePattern.")]
-    public string Invoke(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_invoke", Destructive = false), Description("Invoke Button, MenuItem, Hyperlink through UIA InvokePattern.")]
+    public string Invoke([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_invoke", criteria);
@@ -40,8 +40,8 @@ public sealed class ActionTools
         return Ok("invoked");
     }
 
-    [McpServerTool(Name = "wpf_click"), Description("Click element using pattern if available, coordinates as fallback.")]
-    public string Click(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_click", Destructive = false), Description("Click element using pattern if available, coordinates as fallback.")]
+    public string Click([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_click", criteria);
@@ -63,8 +63,8 @@ public sealed class ActionTools
         return Ok("clicked");
     }
 
-    [McpServerTool(Name = "wpf_set_value"), Description("Set text/value via ValuePattern.")]
-    public string SetValue(string value, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_set_value", Destructive = true, Idempotent = true), Description("Set text/value via ValuePattern.")]
+    public string SetValue([Description("New value to write into the element via ValuePattern; overwrites existing content.")] string value, [Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_set_value", criteria, new() { ["value"] = "***" });
@@ -81,8 +81,8 @@ public sealed class ActionTools
         return Ok("value_set");
     }
 
-    [McpServerTool(Name = "wpf_clear_value"), Description("Clear text/value from element.")]
-    public string ClearValue(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_clear_value", Destructive = true, Idempotent = true), Description("Clear text/value from element.")]
+    public string ClearValue([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_clear_value", criteria);
@@ -100,8 +100,8 @@ public sealed class ActionTools
         return Ok("cleared");
     }
 
-    [McpServerTool(Name = "wpf_type_text"), Description("Type text into focused or selected element via keyboard input.")]
-    public string TypeText(string text, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_type_text", Destructive = true), Description("Type text into focused or selected element via keyboard input.")]
+    public string TypeText([Description("Text to type via simulated keyboard input at the current caret/focus.")] string text, [Description("AutomationId of the element to focus before typing; if omitted, types into the currently focused element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_type_text", criteria, new() { ["text"] = "***" });
@@ -119,8 +119,8 @@ public sealed class ActionTools
         return Ok("typed");
     }
 
-    [McpServerTool(Name = "wpf_send_keys"), Description("Send keyboard shortcuts (e.g., Ctrl+S, Enter, Tab).")]
-    public string SendKeys(string keys)
+    [McpServerTool(Name = "wpf_send_keys", Destructive = true), Description("Send keyboard shortcuts (e.g., Ctrl+S, Enter, Tab).")]
+    public string SendKeys([Description("Key combination using '+' to join modifiers and a key, e.g. 'Ctrl+S', 'Ctrl+Shift+P'. Modifiers: ctrl/control, alt, shift. Keys: enter/return, tab, escape/esc, delete/del, backspace, space, home, end, up, down, left, right, F1-F12, or a single letter/digit.")] string keys)
     {
         _audit.Record("wpf_send_keys", parameters: new() { ["keys"] = keys });
 
@@ -172,8 +172,8 @@ public sealed class ActionTools
         return Ok("keys_sent");
     }
 
-    [McpServerTool(Name = "wpf_focus"), Description("Move focus to element.")]
-    public string Focus(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_focus", Destructive = false, Idempotent = true), Description("Move focus to element.")]
+    public string Focus([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_focus", criteria);
@@ -186,8 +186,8 @@ public sealed class ActionTools
         return Ok("focused");
     }
 
-    [McpServerTool(Name = "wpf_select"), Description("Select list/grid/tree/combo item by automation id or name.")]
-    public string Select(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_select", Destructive = false, Idempotent = true), Description("Select list/grid/tree/combo item by automation id or name.")]
+    public string Select([Description("AutomationId of the target item to select.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_select", criteria);
@@ -204,8 +204,8 @@ public sealed class ActionTools
         return Ok("selected");
     }
 
-    [McpServerTool(Name = "wpf_select_by_text"), Description("Select item in a list/combo by visible text.")]
-    public string SelectByText(string text, string? parentAutomationId = null, string? parentName = null)
+    [McpServerTool(Name = "wpf_select_by_text", Destructive = false, Idempotent = true), Description("Select item in a list/combo by visible text.")]
+    public string SelectByText([Description("Visible text of the item to select (matched against element Name).")] string text, [Description("AutomationId of the container (list/combo) to scope the search; optional.")] string? parentAutomationId = null, [Description("Name of the container element; used when parentAutomationId is omitted.")] string? parentName = null)
     {
         _audit.Record("wpf_select_by_text", parameters: new() { ["text"] = text });
 
@@ -233,8 +233,8 @@ public sealed class ActionTools
         return Ok("selected");
     }
 
-    [McpServerTool(Name = "wpf_toggle"), Description("Toggle checkbox, toggle button, or expander.")]
-    public string Toggle(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_toggle", Destructive = false), Description("Toggle checkbox, toggle button, or expander.")]
+    public string Toggle([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_toggle", criteria);
@@ -251,8 +251,8 @@ public sealed class ActionTools
         return Ok("toggled");
     }
 
-    [McpServerTool(Name = "wpf_check"), Description("Ensure checkbox is checked.")]
-    public string Check(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_check", Destructive = false, Idempotent = true), Description("Ensure checkbox is checked.")]
+    public string Check([Description("AutomationId of the target checkbox.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_check", criteria);
@@ -276,8 +276,8 @@ public sealed class ActionTools
         return Ok("checked");
     }
 
-    [McpServerTool(Name = "wpf_uncheck"), Description("Ensure checkbox is unchecked.")]
-    public string Uncheck(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_uncheck", Destructive = false, Idempotent = true), Description("Ensure checkbox is unchecked.")]
+    public string Uncheck([Description("AutomationId of the target checkbox.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_uncheck", criteria);
@@ -301,8 +301,8 @@ public sealed class ActionTools
         return Ok("unchecked");
     }
 
-    [McpServerTool(Name = "wpf_expand"), Description("Expand combo/tree/expander/menu.")]
-    public string Expand(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_expand", Destructive = false, Idempotent = true), Description("Expand combo/tree/expander/menu.")]
+    public string Expand([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_expand", criteria);
@@ -319,8 +319,8 @@ public sealed class ActionTools
         return Ok("expanded");
     }
 
-    [McpServerTool(Name = "wpf_collapse"), Description("Collapse combo/tree/expander/menu.")]
-    public string Collapse(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_collapse", Destructive = false, Idempotent = true), Description("Collapse combo/tree/expander/menu.")]
+    public string Collapse([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_collapse", criteria);
@@ -337,8 +337,8 @@ public sealed class ActionTools
         return Ok("collapsed");
     }
 
-    [McpServerTool(Name = "wpf_scroll_into_view"), Description("Scroll element into view.")]
-    public string ScrollIntoView(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_scroll_into_view", Destructive = false, Idempotent = true), Description("Scroll element into view.")]
+    public string ScrollIntoView([Description("AutomationId of the target element to bring into view.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_scroll_into_view", criteria);
@@ -356,8 +356,8 @@ public sealed class ActionTools
         return Error("Element does not support ScrollItem pattern.");
     }
 
-    [McpServerTool(Name = "wpf_double_click"), Description("Double-click element.")]
-    public string DoubleClick(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_double_click", Destructive = false), Description("Double-click element.")]
+    public string DoubleClick([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_double_click", criteria);
@@ -371,8 +371,8 @@ public sealed class ActionTools
         return Ok("double_clicked");
     }
 
-    [McpServerTool(Name = "wpf_right_click"), Description("Right-click element to open context menu.")]
-    public string RightClick(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_right_click", Destructive = false), Description("Right-click element to open context menu.")]
+    public string RightClick([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_right_click", criteria);
@@ -386,8 +386,8 @@ public sealed class ActionTools
         return Ok("right_clicked");
     }
 
-    [McpServerTool(Name = "wpf_select_by_index"), Description("Select item by index in a list/combo. Marked as brittle.")]
-    public string SelectByIndex(int index, string? parentAutomationId = null, string? parentName = null)
+    [McpServerTool(Name = "wpf_select_by_index", Destructive = false, Idempotent = true), Description("Select item by index in a list/combo. Marked as brittle.")]
+    public string SelectByIndex([Description("Zero-based index of the item to select among the container's ListItem/TreeItem/DataItem children.")] int index, [Description("AutomationId of the container (list/combo) to scope the search; optional.")] string? parentAutomationId = null, [Description("Name of the container element; used when parentAutomationId is omitted.")] string? parentName = null)
     {
         _audit.Record("wpf_select_by_index", parameters: new() { ["index"] = index });
 
@@ -417,8 +417,8 @@ public sealed class ActionTools
         return Ok($"selected_index_{index}");
     }
 
-    [McpServerTool(Name = "wpf_scroll"), Description("Scroll container by direction and amount.")]
-    public string Scroll(string direction, double amount = 1.0, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_scroll", Destructive = false), Description("Scroll container by direction and amount.")]
+    public string Scroll([Description("Scroll direction; one of: up, down, left, right.")] string direction, [Description("Scroll amount as a multiplier; defaults to 1.0 (one small increment).")] double amount = 1.0, [Description("AutomationId of the scrollable container.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_scroll", criteria, new() { ["direction"] = direction, ["amount"] = amount });
@@ -452,8 +452,8 @@ public sealed class ActionTools
         return Ok("scrolled");
     }
 
-    [McpServerTool(Name = "wpf_open_menu_path"), Description("Open menu path such as 'File > Export > PDF'.")]
-    public string OpenMenuPath(string menuPath)
+    [McpServerTool(Name = "wpf_open_menu_path", Destructive = false), Description("Open menu path such as 'File > Export > PDF'.")]
+    public string OpenMenuPath([Description("Menu path with levels separated by '>', ' > ', or ' → ', e.g. 'File > Export > PDF'. Each level is matched by MenuItem Name, then by AutomationId.")] string menuPath)
     {
         _audit.Record("wpf_open_menu_path", parameters: new() { ["path"] = menuPath });
 
@@ -488,8 +488,8 @@ public sealed class ActionTools
         return Ok("menu_opened");
     }
 
-    [McpServerTool(Name = "wpf_open_context_menu_item"), Description("Right-click target and invoke context menu item.")]
-    public string OpenContextMenuItem(string menuItemName, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_open_context_menu_item", Destructive = false), Description("Right-click target and invoke context menu item.")]
+    public string OpenContextMenuItem([Description("Visible Name of the context-menu item to invoke after right-clicking the target.")] string menuItemName, [Description("AutomationId of the element to right-click.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_open_context_menu_item", criteria, new() { ["menuItem"] = menuItemName });
@@ -515,8 +515,8 @@ public sealed class ActionTools
         return Ok("context_menu_item_invoked");
     }
 
-    [McpServerTool(Name = "wpf_drag_drop"), Description("Drag source element to target element.")]
-    public string DragDrop(string sourceAutomationId, string targetAutomationId)
+    [McpServerTool(Name = "wpf_drag_drop", Destructive = true), Description("Drag source element to target element.")]
+    public string DragDrop([Description("AutomationId of the element to drag from (required).")] string sourceAutomationId, [Description("AutomationId of the element to drop onto (required).")] string targetAutomationId)
     {
         _audit.Record("wpf_drag_drop", parameters: new() { ["source"] = sourceAutomationId, ["target"] = targetAutomationId });
 
@@ -543,8 +543,8 @@ public sealed class ActionTools
         return Ok("drag_drop_completed");
     }
 
-    [McpServerTool(Name = "wpf_set_slider"), Description("Set Slider/RangeBase value.")]
-    public string SetSlider(double value, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_set_slider", Destructive = true, Idempotent = true), Description("Set Slider/RangeBase value.")]
+    public string SetSlider([Description("Target value to set on the Slider/RangeBase via RangeValuePattern; must fall within the control's min/max range.")] double value, [Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_set_slider", criteria, new() { ["value"] = value });
@@ -560,8 +560,8 @@ public sealed class ActionTools
         return Ok("slider_set");
     }
 
-    [McpServerTool(Name = "wpf_set_date"), Description("Set DatePicker/Calendar date by typing text value.")]
-    public string SetDate(string date, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_set_date", Destructive = true, Idempotent = true), Description("Set DatePicker/Calendar date by typing text value.")]
+    public string SetDate([Description("Date value as text, formatted per the control's expected culture/format (e.g. 'MM/dd/yyyy' or '2026-06-17'); set via ValuePattern or typed.")] string date, [Description("AutomationId of the target DatePicker/Calendar.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_set_date", criteria, new() { ["date"] = date });
@@ -582,7 +582,7 @@ public sealed class ActionTools
         return Ok("date_typed");
     }
 
-    [McpServerTool(Name = "wpf_accept_dialog"), Description("Click OK/Yes/Accept on current modal dialog.")]
+    [McpServerTool(Name = "wpf_accept_dialog", Destructive = false), Description("Click OK/Yes/Accept on current modal dialog.")]
     public string AcceptDialog()
     {
         _audit.Record("wpf_accept_dialog");
@@ -606,7 +606,7 @@ public sealed class ActionTools
         return Error("No accept/OK button found in current window.");
     }
 
-    [McpServerTool(Name = "wpf_cancel_dialog"), Description("Click Cancel/No/Close on current modal dialog.")]
+    [McpServerTool(Name = "wpf_cancel_dialog", Destructive = false), Description("Click Cancel/No/Close on current modal dialog.")]
     public string CancelDialog()
     {
         _audit.Record("wpf_cancel_dialog");

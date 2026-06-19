@@ -24,8 +24,8 @@ public sealed class WhyTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_why_disabled"), Description("Explain WHY an element is disabled. Checks CanExecute, bindings, DataContext, and ancestor state to find the root cause.")]
-    public async Task<string> WhyDisabled(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_why_disabled", ReadOnly = true), Description("Explain WHY an element is disabled. Checks CanExecute, bindings, DataContext, and ancestor state to find the root cause.")]
+    public async Task<string> WhyDisabled([Description("AutomationId of the target element. Preferred selector; takes precedence over name.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_why_disabled");
         try
@@ -128,8 +128,8 @@ public sealed class WhyTools
         }
     }
 
-    [McpServerTool(Name = "wpf_why_hidden"), Description("Explain WHY an element is not visible. Checks Visibility, Offscreen, collapsed state, and parent visibility.")]
-    public string WhyHidden(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_why_hidden", ReadOnly = true), Description("Explain WHY an element is not visible. Checks Visibility, Offscreen, collapsed state, and parent visibility.")]
+    public string WhyHidden([Description("AutomationId of the target element. Preferred selector; takes precedence over name.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_why_hidden");
         try
@@ -226,7 +226,7 @@ public sealed class WhyTools
         }
     }
 
-    [McpServerTool(Name = "wpf_why_validation_failed"), Description("Explain validation errors on the current window. Shows which fields have errors, error messages, and ViewModel validation state.")]
+    [McpServerTool(Name = "wpf_why_validation_failed", ReadOnly = true), Description("Explain validation errors on the current window. Shows which fields have errors, error messages, and ViewModel validation state.")]
     public async Task<string> WhyValidationFailed()
     {
         _audit.Record("wpf_why_validation_failed");
@@ -273,8 +273,8 @@ public sealed class WhyTools
         }
     }
 
-    [McpServerTool(Name = "wpf_why_empty"), Description("Explain WHY a field is empty when it should have a value. Traces bindings and DataContext.")]
-    public async Task<string> WhyEmpty(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_why_empty", ReadOnly = true), Description("Explain WHY a field is empty when it should have a value. Traces bindings and DataContext.")]
+    public async Task<string> WhyEmpty([Description("AutomationId of the target element. Preferred selector; takes precedence over name.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_why_empty");
         try
@@ -349,7 +349,7 @@ public sealed class WhyTools
         }
     }
 
-    [McpServerTool(Name = "wpf_explain_screen"), Description("AI-friendly explanation of the current screen: what it does, available actions, current state, and potential issues.")]
+    [McpServerTool(Name = "wpf_explain_screen", ReadOnly = true), Description("AI-friendly explanation of the current screen: what it does, available actions, current state, and potential issues.")]
     public async Task<string> ExplainScreen()
     {
         _audit.Record("wpf_explain_screen");

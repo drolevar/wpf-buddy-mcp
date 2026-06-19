@@ -19,8 +19,11 @@ public sealed class ExplorerTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_explore_app"), Description("Autonomously explore the attached app by clicking navigation elements. Returns a state machine diagram of discovered screens, element inventories, and testability scores.")]
-    public string ExploreApp(int maxSteps = 30, int maxDepth = 3, int delayMs = 500)
+    [McpServerTool(Name = "wpf_explore_app", Destructive = false), Description("Autonomously explore the attached app by clicking navigation elements. Returns a state machine diagram of discovered screens, element inventories, and testability scores.")]
+    public string ExploreApp(
+        [Description("Maximum number of exploration steps (element interactions) to perform before stopping. Optional; defaults to 30.")] int maxSteps = 30,
+        [Description("Maximum navigation depth to recurse from the starting screen. Optional; defaults to 3.")] int maxDepth = 3,
+        [Description("Delay in milliseconds to wait after each interaction for the UI to settle. Optional; defaults to 500.")] int delayMs = 500)
     {
         _audit.Record("wpf_explore_app");
         try
@@ -64,7 +67,7 @@ public sealed class ExplorerTools
         }
     }
 
-    [McpServerTool(Name = "wpf_explore_screen"), Description("Analyze the current screen: list all actionable elements, group by function (navigation, input, display), and rate testability.")]
+    [McpServerTool(Name = "wpf_explore_screen", ReadOnly = true), Description("Analyze the current screen: list all actionable elements, group by function (navigation, input, display), and rate testability.")]
     public string ExploreScreen()
     {
         _audit.Record("wpf_explore_screen");
@@ -121,7 +124,7 @@ public sealed class ExplorerTools
         }
     }
 
-    [McpServerTool(Name = "wpf_suggest_test_scenarios"), Description("Based on discovered screens and elements, suggest test scenarios for the current window.")]
+    [McpServerTool(Name = "wpf_suggest_test_scenarios", ReadOnly = true), Description("Based on discovered screens and elements, suggest test scenarios for the current window.")]
     public string SuggestTestScenarios()
     {
         _audit.Record("wpf_suggest_test_scenarios");

@@ -20,8 +20,11 @@ public sealed class SelectorTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_build_selector"), Description("Generate stable selector for an element found by automation id or name.")]
-    public string BuildSelector(string? automationId = null, string? name = null, string? controlType = null)
+    [McpServerTool(Name = "wpf_build_selector", ReadOnly = true), Description("Generate stable selector for an element found by automation id or name.")]
+    public string BuildSelector(
+        [Description("AutomationId of the target element; the most stable selector. Optional.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted. Optional.")] string? name = null,
+        [Description("UIA control type to disambiguate (e.g. Button, TextBox, ComboBox, CheckBox, MenuItem). Optional.")] string? controlType = null)
     {
         _audit.Record("wpf_build_selector");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name, ControlType = controlType };
@@ -33,8 +36,12 @@ public sealed class SelectorTools
         return JsonSerializer.Serialize(selector, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_validate_selector"), Description("Test whether a selector resolves uniquely.")]
-    public string ValidateSelector(string? automationId = null, string? name = null, string? controlType = null, string? className = null)
+    [McpServerTool(Name = "wpf_validate_selector", ReadOnly = true), Description("Test whether a selector resolves uniquely.")]
+    public string ValidateSelector(
+        [Description("AutomationId of the target element. Optional.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted. Optional.")] string? name = null,
+        [Description("UIA control type to constrain matching (e.g. Button, TextBox, ComboBox). Optional.")] string? controlType = null,
+        [Description("UIA ClassName to constrain matching. Optional.")] string? className = null)
     {
         _audit.Record("wpf_validate_selector");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name, ControlType = controlType, ClassName = className };
@@ -48,7 +55,7 @@ public sealed class SelectorTools
         }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_detect_missing_ids"), Description("Find actionable elements missing AutomationId in current window.")]
+    [McpServerTool(Name = "wpf_detect_missing_ids", ReadOnly = true), Description("Find actionable elements missing AutomationId in current window.")]
     public string DetectMissingIds()
     {
         _audit.Record("wpf_detect_missing_ids");
@@ -73,7 +80,7 @@ public sealed class SelectorTools
         return JsonSerializer.Serialize(result, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_detect_duplicate_ids"), Description("Find duplicate AutomationIds in current window.")]
+    [McpServerTool(Name = "wpf_detect_duplicate_ids", ReadOnly = true), Description("Find duplicate AutomationIds in current window.")]
     public string DetectDuplicateIds()
     {
         _audit.Record("wpf_detect_duplicate_ids");
@@ -92,8 +99,12 @@ public sealed class SelectorTools
         return JsonSerializer.Serialize(new { duplicateGroups = duplicates.Count, duplicates }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_explain_selector"), Description("Explain how selector is resolved and why it may be brittle.")]
-    public string ExplainSelector(string? automationId = null, string? name = null, string? controlType = null, string? className = null)
+    [McpServerTool(Name = "wpf_explain_selector", ReadOnly = true), Description("Explain how selector is resolved and why it may be brittle.")]
+    public string ExplainSelector(
+        [Description("AutomationId of the target element. Optional.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted. Optional.")] string? name = null,
+        [Description("UIA control type to constrain matching (e.g. Button, TextBox, ComboBox). Optional.")] string? controlType = null,
+        [Description("UIA ClassName to constrain matching. Optional.")] string? className = null)
     {
         _audit.Record("wpf_explain_selector");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name, ControlType = controlType, ClassName = className };
@@ -133,8 +144,10 @@ public sealed class SelectorTools
         return JsonSerializer.Serialize(new { matchCount = elements.Count, stability, explanation }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_rank_selectors"), Description("Generate multiple selectors ranked by stability for an element.")]
-    public string RankSelectors(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_rank_selectors", ReadOnly = true), Description("Generate multiple selectors ranked by stability for an element.")]
+    public string RankSelectors(
+        [Description("AutomationId of the target element. Optional.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted. Optional.")] string? name = null)
     {
         _audit.Record("wpf_rank_selectors");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -153,8 +166,12 @@ public sealed class SelectorTools
         return JsonSerializer.Serialize(new { selectors = result }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_heal_selector"), Description("Find likely replacement when a selector no longer resolves.")]
-    public string HealSelector(string? automationId = null, string? name = null, string? controlType = null, string? className = null)
+    [McpServerTool(Name = "wpf_heal_selector", ReadOnly = true), Description("Find likely replacement when a selector no longer resolves.")]
+    public string HealSelector(
+        [Description("AutomationId from the original (broken) selector. Optional.")] string? automationId = null,
+        [Description("Name from the original selector; used for partial-name healing. Optional.")] string? name = null,
+        [Description("UIA control type from the original selector (e.g. Button, TextBox). Optional.")] string? controlType = null,
+        [Description("UIA ClassName from the original selector. Optional.")] string? className = null)
     {
         _audit.Record("wpf_heal_selector");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name, ControlType = controlType, ClassName = className };
@@ -205,8 +222,11 @@ public sealed class SelectorTools
         return JsonSerializer.Serialize(new { status = "selector_broken", healed = candidates.Count > 0, candidates }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_find_similar_element"), Description("Locate element by previous metadata: text, control type, position, siblings.")]
-    public string FindSimilarElement(string? controlType = null, string? partialName = null, string? nearAutomationId = null)
+    [McpServerTool(Name = "wpf_find_similar_element", ReadOnly = true), Description("Locate element by previous metadata: text, control type, position, siblings.")]
+    public string FindSimilarElement(
+        [Description("UIA control type to filter candidates (e.g. Button, TextBox, ComboBox). Optional.")] string? controlType = null,
+        [Description("Substring matched case-insensitively against element Name. Optional.")] string? partialName = null,
+        [Description("AutomationId of a reference element; results are sorted by proximity (bounds distance) to it. Optional.")] string? nearAutomationId = null)
     {
         _audit.Record("wpf_find_similar_element");
         var allElements = _uia.QueryElements();
@@ -236,8 +256,10 @@ public sealed class SelectorTools
         return JsonSerializer.Serialize(new { count = results.Count, elements = results }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_selector_candidates"), Description("Return all possible selector strategies for an element.")]
-    public string GetSelectorCandidates(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_get_selector_candidates", ReadOnly = true), Description("Return all possible selector strategies for an element.")]
+    public string GetSelectorCandidates(
+        [Description("AutomationId of the target element. Optional.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted. Optional.")] string? name = null)
     {
         _audit.Record("wpf_get_selector_candidates");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -265,7 +287,7 @@ public sealed class SelectorTools
         return JsonSerializer.Serialize(new { candidates }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_detect_brittle_selectors"), Description("Flag selectors that rely on index, coordinates, generated names, or unstable text.")]
+    [McpServerTool(Name = "wpf_detect_brittle_selectors", ReadOnly = true), Description("Flag selectors that rely on index, coordinates, generated names, or unstable text.")]
     public string DetectBrittleSelectors()
     {
         _audit.Record("wpf_detect_brittle_selectors");

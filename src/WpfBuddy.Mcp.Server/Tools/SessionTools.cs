@@ -20,7 +20,7 @@ public sealed class SessionTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_list_apps"), Description("List candidate WPF/Windows desktop processes and top-level windows.")]
+    [McpServerTool(Name = "wpf_list_apps", ReadOnly = true), Description("List candidate WPF/Windows desktop processes and top-level windows.")]
     public string ListApps()
     {
         _audit.Record("wpf_list_apps");
@@ -47,8 +47,11 @@ public sealed class SessionTools
         }
     }
 
-    [McpServerTool(Name = "wpf_launch_app"), Description("Launch app from executable path with optional args and working directory.")]
-    public string LaunchApp(string executablePath, string? arguments = null, string? workingDirectory = null)
+    [McpServerTool(Name = "wpf_launch_app", Destructive = false), Description("Launch app from executable path with optional args and working directory.")]
+    public string LaunchApp(
+        [Description("Required. Full path to the executable to launch (e.g. C:\\Apps\\MyApp.exe).")] string executablePath,
+        [Description("Optional command-line arguments to pass to the process.")] string? arguments = null,
+        [Description("Optional working directory for the launched process; defaults to the executable's directory.")] string? workingDirectory = null)
     {
         _audit.Record("wpf_launch_app", parameters: new() { ["path"] = executablePath, ["args"] = arguments });
         _session.Launch(executablePath, arguments, workingDirectory);
@@ -56,8 +59,10 @@ public sealed class SessionTools
         return JsonSerializer.Serialize(status, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_attach"), Description("Attach to a running process/window by PID, process name, or window title.")]
-    public string Attach(int? processId = null, string? processName = null)
+    [McpServerTool(Name = "wpf_attach", Destructive = false), Description("Attach to a running process/window by PID, process name, or window title.")]
+    public string Attach(
+        [Description("Process ID (PID) of the target app; takes precedence when provided. Supply this or processName.")] int? processId = null,
+        [Description("Process name to match (without .exe); used when processId is omitted. Supply this or processId.")] string? processName = null)
     {
         _audit.Record("wpf_attach", parameters: new() { ["pid"] = processId, ["name"] = processName });
 
@@ -78,7 +83,7 @@ public sealed class SessionTools
         return JsonSerializer.Serialize(status, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_detach"), Description("Detach from current app session.")]
+    [McpServerTool(Name = "wpf_detach", Destructive = false, Idempotent = true), Description("Detach from current app session.")]
     public string Detach()
     {
         _audit.Record("wpf_detach");
@@ -86,14 +91,14 @@ public sealed class SessionTools
         return JsonSerializer.Serialize(new { result = "detached" }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_session_status"), Description("Return current attachment, window handle, PID, app state, active window.")]
+    [McpServerTool(Name = "wpf_session_status", ReadOnly = true), Description("Return current attachment, window handle, PID, app state, active window.")]
     public string SessionStatus()
     {
         var status = _session.GetStatus();
         return JsonSerializer.Serialize(status, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_focus_window"), Description("Bring attached app/window to foreground.")]
+    [McpServerTool(Name = "wpf_focus_window", Destructive = false, Idempotent = true), Description("Bring attached app/window to foreground.")]
     public string FocusWindow()
     {
         if (!_session.IsAttached || _session.ActiveWindow is null)
@@ -104,7 +109,7 @@ public sealed class SessionTools
         return JsonSerializer.Serialize(new { result = "focused" }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_list_windows"), Description("List top-level, modal, popup, owned, and child windows for attached process.")]
+    [McpServerTool(Name = "wpf_list_windows", ReadOnly = true), Description("List top-level, modal, popup, owned, and child windows for attached process.")]
     public string ListWindows()
     {
         if (!_session.IsAttached || _session.Automation is null)
@@ -123,8 +128,10 @@ public sealed class SessionTools
         return JsonSerializer.Serialize(result, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_select_window"), Description("Switch active target window within attached process by title or automation id.")]
-    public string SelectWindow(string? title = null, string? automationId = null)
+    [McpServerTool(Name = "wpf_select_window", Destructive = false, Idempotent = true), Description("Switch active target window within attached process by title or automation id.")]
+    public string SelectWindow(
+        [Description("Window title to match (case-insensitive substring); used when automationId is omitted.")] string? title = null,
+        [Description("AutomationId of the target window (exact match); takes precedence over title.")] string? automationId = null)
     {
         if (!_session.IsAttached || _session.Automation is null)
             return JsonSerializer.Serialize(new { error = "No app attached." }, JsonOptions.Default);
@@ -143,8 +150,10 @@ public sealed class SessionTools
         return JsonSerializer.Serialize(new { result = "selected", title = target.Title }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_close_window"), Description("Close a window through normal close command.")]
-    public string CloseWindow(string? title = null, string? automationId = null)
+    [McpServerTool(Name = "wpf_close_window", Destructive = true), Description("Close a window through normal close command.")]
+    public string CloseWindow(
+        [Description("Window title to match (case-insensitive substring); used when automationId is omitted. If neither matches, the active window is closed.")] string? title = null,
+        [Description("AutomationId of the target window (exact match); takes precedence over title. If neither matches, the active window is closed.")] string? automationId = null)
     {
         if (!_session.IsAttached || _session.Automation is null)
             return JsonSerializer.Serialize(new { error = "No app attached." }, JsonOptions.Default);
@@ -165,7 +174,7 @@ public sealed class SessionTools
         return JsonSerializer.Serialize(new { result = "closed" }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_window_state"), Description("Get minimized/maximized/normal/focused/modal state.")]
+    [McpServerTool(Name = "wpf_get_window_state", ReadOnly = true), Description("Get minimized/maximized/normal/focused/modal state.")]
     public string GetWindowState()
     {
         if (!_session.IsAttached || _session.ActiveWindow is null)
@@ -189,8 +198,9 @@ public sealed class SessionTools
         return JsonSerializer.Serialize(result, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_set_window_state"), Description("Minimize, maximize, or restore a window.")]
-    public string SetWindowState(string state)
+    [McpServerTool(Name = "wpf_set_window_state", Destructive = false, Idempotent = true), Description("Minimize, maximize, or restore a window.")]
+    public string SetWindowState(
+        [Description("Required. Target window state. Allowed values: minimize/minimized, maximize/maximized, restore/normal.")] string state)
     {
         if (!_session.IsAttached || _session.ActiveWindow is null)
             return JsonSerializer.Serialize(new { error = "No window attached." }, JsonOptions.Default);
@@ -219,7 +229,7 @@ public sealed class SessionTools
         return JsonSerializer.Serialize(new { result = "state_changed", state }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_get_app_metadata"), Description("Get app version, executable path, process bitness, framework if detectable.")]
+    [McpServerTool(Name = "wpf_get_app_metadata", ReadOnly = true), Description("Get app version, executable path, process bitness, framework if detectable.")]
     public string GetAppMetadata()
     {
         if (!_session.IsAttached || _session.Application is null)
@@ -262,7 +272,7 @@ public sealed class SessionTools
         catch { return false; }
     }
 
-    [McpServerTool(Name = "wpf_restart_app"), Description("Close and relaunch app with previous settings.")]
+    [McpServerTool(Name = "wpf_restart_app", Destructive = true), Description("Close and relaunch app with previous settings.")]
     public string RestartApp()
     {
         if (!_session.IsAttached || _session.Application is null)
@@ -290,7 +300,7 @@ public sealed class SessionTools
         }
     }
 
-    [McpServerTool(Name = "wpf_kill_app"), Description("Force-kill attached process. Use with caution.")]
+    [McpServerTool(Name = "wpf_kill_app", Destructive = true, Idempotent = true), Description("Force-kill attached process. Use with caution.")]
     public string KillApp()
     {
         if (!_session.IsAttached || _session.Application is null)

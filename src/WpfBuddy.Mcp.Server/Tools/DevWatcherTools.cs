@@ -19,7 +19,7 @@ public sealed class DevWatcherTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_dev_check"), Description("Run a development-time health check on the current window. Reports missing AutomationIds, duplicate IDs, accessibility gaps, binding errors, new/removed elements since last check, and an overall health score.")]
+    [McpServerTool(Name = "wpf_dev_check", ReadOnly = true), Description("Run a development-time health check on the current window. Reports missing AutomationIds, duplicate IDs, accessibility gaps, binding errors, new/removed elements since last check, and an overall health score.")]
     public async Task<string> DevCheck()
     {
         _audit.Record("wpf_dev_check");
@@ -34,7 +34,7 @@ public sealed class DevWatcherTools
         }
     }
 
-    [McpServerTool(Name = "wpf_dev_diff"), Description("Compare current UI state with previous check. Shows what elements were added, removed, or changed since the last wpf_dev_check call.")]
+    [McpServerTool(Name = "wpf_dev_diff", ReadOnly = true), Description("Compare current UI state with previous check. Shows what elements were added, removed, or changed since the last wpf_dev_check call.")]
     public async Task<string> DevDiff()
     {
         _audit.Record("wpf_dev_diff");
@@ -65,7 +65,7 @@ public sealed class DevWatcherTools
         }
     }
 
-    [McpServerTool(Name = "wpf_dev_suggest_ids"), Description("Suggest AutomationId values for elements that are currently missing them. Returns XAML snippets ready to paste.")]
+    [McpServerTool(Name = "wpf_dev_suggest_ids", ReadOnly = true), Description("Suggest AutomationId values for elements that are currently missing them. Returns XAML snippets ready to paste.")]
     public string DevSuggestIds()
     {
         _audit.Record("wpf_dev_suggest_ids");
@@ -99,7 +99,7 @@ public sealed class DevWatcherTools
         }
     }
 
-    [McpServerTool(Name = "wpf_dev_accessibility_quick"), Description("Quick accessibility lint: reports critical issues that would fail WCAG compliance — missing names, keyboard-inaccessible controls, broken focus order.")]
+    [McpServerTool(Name = "wpf_dev_accessibility_quick", ReadOnly = true), Description("Quick accessibility lint: reports critical issues that would fail WCAG compliance — missing names, keyboard-inaccessible controls, broken focus order.")]
     public string DevAccessibilityQuick()
     {
         _audit.Record("wpf_dev_accessibility_quick");

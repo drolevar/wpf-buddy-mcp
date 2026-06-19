@@ -18,8 +18,11 @@ public sealed class AssertionTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_assert_exists"), Description("Assert element exists.")]
-    public string AssertExists(string? automationId = null, string? name = null, string? controlType = null)
+    [McpServerTool(Name = "wpf_assert_exists", ReadOnly = true), Description("Assert element exists.")]
+    public string AssertExists(
+        [Description("AutomationId of the target element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null,
+        [Description("Optional control type filter (e.g. Button, TextBox, CheckBox) to disambiguate matches.")] string? controlType = null)
     {
         _audit.Record("wpf_assert_exists");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name, ControlType = controlType };
@@ -29,8 +32,10 @@ public sealed class AssertionTools
             : Fail("Element does not exist.");
     }
 
-    [McpServerTool(Name = "wpf_assert_not_exists"), Description("Assert element is absent.")]
-    public string AssertNotExists(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_assert_not_exists", ReadOnly = true), Description("Assert element is absent.")]
+    public string AssertNotExists(
+        [Description("AutomationId of the target element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_assert_not_exists");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -40,8 +45,10 @@ public sealed class AssertionTools
             : Fail("Element unexpectedly exists.");
     }
 
-    [McpServerTool(Name = "wpf_assert_visible"), Description("Assert element is visible (not offscreen).")]
-    public string AssertVisible(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_assert_visible", ReadOnly = true), Description("Assert element is visible (not offscreen).")]
+    public string AssertVisible(
+        [Description("AutomationId of the target element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_assert_visible");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -53,8 +60,10 @@ public sealed class AssertionTools
             : Fail("Element is offscreen.");
     }
 
-    [McpServerTool(Name = "wpf_assert_enabled"), Description("Assert element is enabled.")]
-    public string AssertEnabled(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_assert_enabled", ReadOnly = true), Description("Assert element is enabled.")]
+    public string AssertEnabled(
+        [Description("AutomationId of the target element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_assert_enabled");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -66,8 +75,10 @@ public sealed class AssertionTools
             : Fail("Element is disabled.");
     }
 
-    [McpServerTool(Name = "wpf_assert_disabled"), Description("Assert element is disabled.")]
-    public string AssertDisabled(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_assert_disabled", ReadOnly = true), Description("Assert element is disabled.")]
+    public string AssertDisabled(
+        [Description("AutomationId of the target element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_assert_disabled");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -79,8 +90,12 @@ public sealed class AssertionTools
             : Fail("Element is enabled.");
     }
 
-    [McpServerTool(Name = "wpf_assert_text"), Description("Assert element text equals, contains, or matches expected value.")]
-    public string AssertText(string expected, string? automationId = null, string? name = null, string mode = "equals")
+    [McpServerTool(Name = "wpf_assert_text", ReadOnly = true), Description("Assert element text equals, contains, or matches expected value.")]
+    public string AssertText(
+        [Description("Expected text to compare against the element's text/value. Required.")] string expected,
+        [Description("AutomationId of the target element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null,
+        [Description("Comparison mode (case-insensitive): equals (default), contains, startswith, endswith.")] string mode = "equals")
     {
         _audit.Record("wpf_assert_text");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -111,8 +126,11 @@ public sealed class AssertionTools
             : Fail($"Text mismatch. Expected ({mode}): '{expected}', Actual: '{text}'.");
     }
 
-    [McpServerTool(Name = "wpf_assert_value"), Description("Assert element value equals expected.")]
-    public string AssertValue(string expected, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_assert_value", ReadOnly = true), Description("Assert element value equals expected.")]
+    public string AssertValue(
+        [Description("Expected value to compare against the element's ValuePattern value (case-insensitive equals). Required.")] string expected,
+        [Description("AutomationId of the target element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_assert_value");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -134,8 +152,10 @@ public sealed class AssertionTools
             : Fail($"Value mismatch. Expected: '{expected}', Actual: '{value}'.");
     }
 
-    [McpServerTool(Name = "wpf_assert_checked"), Description("Assert checkbox/toggle is checked.")]
-    public string AssertChecked(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_assert_checked", ReadOnly = true), Description("Assert checkbox/toggle is checked.")]
+    public string AssertChecked(
+        [Description("AutomationId of the target element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_assert_checked");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -151,8 +171,10 @@ public sealed class AssertionTools
             : Fail($"Element is not checked (state: {state}).");
     }
 
-    [McpServerTool(Name = "wpf_assert_unchecked"), Description("Assert checkbox/toggle is unchecked.")]
-    public string AssertUnchecked(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_assert_unchecked", ReadOnly = true), Description("Assert checkbox/toggle is unchecked.")]
+    public string AssertUnchecked(
+        [Description("AutomationId of the target element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_assert_unchecked");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -168,7 +190,7 @@ public sealed class AssertionTools
             : Fail($"Element is not unchecked (state: {state}).");
     }
 
-    [McpServerTool(Name = "wpf_assert_no_validation_errors"), Description("Assert no validation errors are visible in current window (checks for error-styled elements).")]
+    [McpServerTool(Name = "wpf_assert_no_validation_errors", ReadOnly = true), Description("Assert no validation errors are visible in current window (checks for error-styled elements).")]
     public string AssertNoValidationErrors()
     {
         _audit.Record("wpf_assert_no_validation_errors");
@@ -185,8 +207,11 @@ public sealed class AssertionTools
         return Pass("No validation errors detected.");
     }
 
-    [McpServerTool(Name = "wpf_assert_selected"), Description("Assert that a specific item is selected in a list/combo/tree.")]
-    public string AssertSelected(string expectedItem, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_assert_selected", ReadOnly = true), Description("Assert that a specific item is selected in a list/combo/tree.")]
+    public string AssertSelected(
+        [Description("Name of the item expected to be selected (case-insensitive equals). Required.")] string expectedItem,
+        [Description("AutomationId of the target selection container (list/combo/tree).")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_assert_selected");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -210,8 +235,12 @@ public sealed class AssertionTools
         }
     }
 
-    [McpServerTool(Name = "wpf_assert_grid_row_count"), Description("Assert DataGrid/ListView row count.")]
-    public string AssertGridRowCount(int expected, string comparison = "equals", string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_assert_grid_row_count", ReadOnly = true), Description("Assert DataGrid/ListView row count.")]
+    public string AssertGridRowCount(
+        [Description("Expected row count to compare against. Required.")] int expected,
+        [Description("Comparison operator (case-insensitive): equals (default), greater/gt, less/lt, greaterequal/gte, lessequal/lte.")] string comparison = "equals",
+        [Description("AutomationId of the target grid/list element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_assert_grid_row_count");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -245,8 +274,13 @@ public sealed class AssertionTools
             : Fail($"Row count is {rowCount}, expected {comparison} {expected}.");
     }
 
-    [McpServerTool(Name = "wpf_assert_grid_cell"), Description("Assert a grid cell contains expected value.")]
-    public string AssertGridCell(int row, int column, string expected, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_assert_grid_cell", ReadOnly = true), Description("Assert a grid cell contains expected value.")]
+    public string AssertGridCell(
+        [Description("Zero-based row index of the cell. Required.")] int row,
+        [Description("Zero-based column index of the cell. Required.")] int column,
+        [Description("Expected substring the cell value should contain (case-insensitive). Required.")] string expected,
+        [Description("AutomationId of the target grid element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_assert_grid_cell");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -270,8 +304,10 @@ public sealed class AssertionTools
         }
     }
 
-    [McpServerTool(Name = "wpf_assert_accessibility"), Description("Assert minimum accessibility expectations: name or automationId present, keyboard focusable.")]
-    public string AssertAccessibility(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_assert_accessibility", ReadOnly = true), Description("Assert minimum accessibility expectations: name or automationId present, keyboard focusable.")]
+    public string AssertAccessibility(
+        [Description("AutomationId of the target element.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_assert_accessibility");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -291,8 +327,10 @@ public sealed class AssertionTools
             : Fail($"Accessibility issues: {string.Join(", ", issues)}");
     }
 
-    [McpServerTool(Name = "wpf_assert_snapshot_matches"), Description("Compare current UI state to a saved baseline snapshot (element count and structure).")]
-    public string AssertSnapshotMatches(string baselineJson, int tolerancePercent = 5)
+    [McpServerTool(Name = "wpf_assert_snapshot_matches", ReadOnly = true), Description("Compare current UI state to a saved baseline snapshot (element count and structure).")]
+    public string AssertSnapshotMatches(
+        [Description("Baseline UI snapshot as a JSON string (UiSnapshot shape, e.g. from a prior snapshot capture). Required.")] string baselineJson,
+        [Description("Allowed difference in element count as a percentage of the baseline, 0-100. Default 5.")] int tolerancePercent = 5)
     {
         _audit.Record("wpf_assert_snapshot_matches");
 

@@ -17,8 +17,8 @@ public sealed class MvvmTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_get_viewmodel"), Description("Get ViewModel type and property summary via probe.")]
-    public async Task<string> GetViewModel(string? windowTitle = null)
+    [McpServerTool(Name = "wpf_get_viewmodel", ReadOnly = true), Description("Get ViewModel type and property summary via probe.")]
+    public async Task<string> GetViewModel([Description("Title of the target window whose ViewModel to inspect; optional, defaults to the main/active window when omitted.")] string? windowTitle = null)
     {
         _audit.Record("wpf_get_viewmodel");
         if (!_probe.IsConnected)
@@ -28,8 +28,8 @@ public sealed class MvvmTools
         return FormatResponse(response);
     }
 
-    [McpServerTool(Name = "wpf_get_viewmodel_properties"), Description("Get all ViewModel properties with current values.")]
-    public async Task<string> GetViewModelProperties(string? windowTitle = null)
+    [McpServerTool(Name = "wpf_get_viewmodel_properties", ReadOnly = true), Description("Get all ViewModel properties with current values.")]
+    public async Task<string> GetViewModelProperties([Description("Title of the target window whose ViewModel properties to read; optional, defaults to the main/active window when omitted.")] string? windowTitle = null)
     {
         _audit.Record("wpf_get_viewmodel_properties");
         if (!_probe.IsConnected)
@@ -39,8 +39,8 @@ public sealed class MvvmTools
         return FormatResponse(response);
     }
 
-    [McpServerTool(Name = "wpf_get_commands"), Description("List all ICommand properties on ViewModel.")]
-    public async Task<string> GetCommands(string? windowTitle = null)
+    [McpServerTool(Name = "wpf_get_commands", ReadOnly = true), Description("List all ICommand properties on ViewModel.")]
+    public async Task<string> GetCommands([Description("Title of the target window whose ViewModel commands to list; optional, defaults to the main/active window when omitted.")] string? windowTitle = null)
     {
         _audit.Record("wpf_get_commands");
         if (!_probe.IsConnected)
@@ -51,8 +51,8 @@ public sealed class MvvmTools
         return FormatResponse(response);
     }
 
-    [McpServerTool(Name = "wpf_get_command_state"), Description("Get CanExecute state of a specific command.")]
-    public async Task<string> GetCommandState(string commandName, string? windowTitle = null)
+    [McpServerTool(Name = "wpf_get_command_state", ReadOnly = true), Description("Get CanExecute state of a specific command.")]
+    public async Task<string> GetCommandState([Description("Name of the ICommand property on the ViewModel to query (required); matched case-insensitively.")] string commandName, [Description("Title of the target window hosting the command; optional, defaults to the main/active window when omitted.")] string? windowTitle = null)
     {
         _audit.Record("wpf_get_command_state");
         if (!_probe.IsConnected)
@@ -75,8 +75,8 @@ public sealed class MvvmTools
         return FormatResponse(response);
     }
 
-    [McpServerTool(Name = "wpf_execute_command"), Description("Execute an ICommand on ViewModel via probe.")]
-    public async Task<string> ExecuteCommand(string commandName, string? parameter = null, string? windowTitle = null)
+    [McpServerTool(Name = "wpf_execute_command", Destructive = true), Description("Execute an ICommand on ViewModel via probe.")]
+    public async Task<string> ExecuteCommand([Description("Name of the ICommand property on the ViewModel to execute (required).")] string commandName, [Description("Optional command parameter passed to Execute; serialized as a string. Omit if the command takes no parameter.")] string? parameter = null, [Description("Title of the target window hosting the command; optional, defaults to the main/active window when omitted.")] string? windowTitle = null)
     {
         _audit.Record("wpf_execute_command");
         if (!_probe.IsConnected)
@@ -91,7 +91,7 @@ public sealed class MvvmTools
         return FormatResponse(response);
     }
 
-    [McpServerTool(Name = "wpf_get_binding_errors"), Description("Get all WPF binding errors from the target app.")]
+    [McpServerTool(Name = "wpf_get_binding_errors", ReadOnly = true), Description("Get all WPF binding errors from the target app.")]
     public async Task<string> GetBindingErrors()
     {
         _audit.Record("wpf_get_binding_errors");
@@ -102,8 +102,8 @@ public sealed class MvvmTools
         return FormatResponse(response);
     }
 
-    [McpServerTool(Name = "wpf_get_bindings"), Description("Get all active bindings in the window.")]
-    public async Task<string> GetBindings(string? windowTitle = null)
+    [McpServerTool(Name = "wpf_get_bindings", ReadOnly = true), Description("Get all active bindings in the window.")]
+    public async Task<string> GetBindings([Description("Title of the target window whose active bindings to list; optional, defaults to the main/active window when omitted.")] string? windowTitle = null)
     {
         _audit.Record("wpf_get_bindings");
         if (!_probe.IsConnected)
@@ -113,8 +113,8 @@ public sealed class MvvmTools
         return FormatResponse(response);
     }
 
-    [McpServerTool(Name = "wpf_get_validation_state"), Description("Get validation errors from the ViewModel/View.")]
-    public async Task<string> GetValidationState(string? windowTitle = null)
+    [McpServerTool(Name = "wpf_get_validation_state", ReadOnly = true), Description("Get validation errors from the ViewModel/View.")]
+    public async Task<string> GetValidationState([Description("Title of the target window whose validation state to read; optional, defaults to the main/active window when omitted.")] string? windowTitle = null)
     {
         _audit.Record("wpf_get_validation_state");
         if (!_probe.IsConnected)
@@ -124,7 +124,7 @@ public sealed class MvvmTools
         return FormatResponse(response);
     }
 
-    [McpServerTool(Name = "wpf_get_dispatcher_status"), Description("Get WPF Dispatcher thread status.")]
+    [McpServerTool(Name = "wpf_get_dispatcher_status", ReadOnly = true), Description("Get WPF Dispatcher thread status.")]
     public async Task<string> GetDispatcherStatus()
     {
         _audit.Record("wpf_get_dispatcher_status");
@@ -135,8 +135,8 @@ public sealed class MvvmTools
         return FormatResponse(response);
     }
 
-    [McpServerTool(Name = "wpf_get_datacontext"), Description("Get DataContext type and value for a window.")]
-    public async Task<string> GetDataContext(string? windowTitle = null)
+    [McpServerTool(Name = "wpf_get_datacontext", ReadOnly = true), Description("Get DataContext type and value for a window.")]
+    public async Task<string> GetDataContext([Description("Title of the target window whose DataContext to inspect; optional, defaults to the main/active window when omitted.")] string? windowTitle = null)
     {
         _audit.Record("wpf_get_datacontext");
         if (!_probe.IsConnected)

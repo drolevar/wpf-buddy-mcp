@@ -20,8 +20,11 @@ public sealed class DataGridTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_grid_get_rows"), Description("Return visible DataGrid/ListView rows.")]
-    public string GridGetRows(string? automationId = null, string? name = null, int maxRows = 50)
+    [McpServerTool(Name = "wpf_grid_get_rows", ReadOnly = true), Description("Return visible DataGrid/ListView rows.")]
+    public string GridGetRows(
+        [Description("AutomationId of the target grid/list element.")] string? automationId = null,
+        [Description("Element Name/content of the grid; used when automationId is omitted.")] string? name = null,
+        [Description("Maximum number of rows to return. Optional; default 50.")] int maxRows = 50)
     {
         _audit.Record("wpf_grid_get_rows");
         var grid = FindGrid(automationId, name);
@@ -72,8 +75,10 @@ public sealed class DataGridTools
         return JsonSerializer.Serialize(new { rowCount = rows.Count, rows }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_grid_get_columns"), Description("Return column headers and metadata.")]
-    public string GridGetColumns(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_grid_get_columns", ReadOnly = true), Description("Return column headers and metadata.")]
+    public string GridGetColumns(
+        [Description("AutomationId of the target grid/list element.")] string? automationId = null,
+        [Description("Element Name/content of the grid; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_grid_get_columns");
         var grid = FindGrid(automationId, name);
@@ -101,8 +106,12 @@ public sealed class DataGridTools
         return JsonSerializer.Serialize(new { columnCount = columns.Count, columns }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_grid_get_cell"), Description("Get cell value by row and column index.")]
-    public string GridGetCell(int row, int column, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_grid_get_cell", ReadOnly = true), Description("Get cell value by row and column index.")]
+    public string GridGetCell(
+        [Description("Zero-based row index of the target cell.")] int row,
+        [Description("Zero-based column index of the target cell.")] int column,
+        [Description("AutomationId of the target grid/list element.")] string? automationId = null,
+        [Description("Element Name/content of the grid; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_grid_get_cell");
         var grid = FindGrid(automationId, name);
@@ -132,8 +141,13 @@ public sealed class DataGridTools
         }
     }
 
-    [McpServerTool(Name = "wpf_grid_set_cell"), Description("Edit cell value by row and column index.")]
-    public string GridSetCell(int row, int column, string value, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_grid_set_cell", Destructive = true, Idempotent = true), Description("Edit cell value by row and column index.")]
+    public string GridSetCell(
+        [Description("Zero-based row index of the target cell.")] int row,
+        [Description("Zero-based column index of the target cell.")] int column,
+        [Description("New text value to write into the cell (overwrites existing content).")] string value,
+        [Description("AutomationId of the target grid/list element.")] string? automationId = null,
+        [Description("Element Name/content of the grid; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_grid_set_cell", parameters: new() { ["row"] = row, ["column"] = column, ["value"] = "***" });
         var grid = FindGrid(automationId, name);
@@ -163,8 +177,12 @@ public sealed class DataGridTools
         }
     }
 
-    [McpServerTool(Name = "wpf_grid_select_row"), Description("Select row by index or by cell text.")]
-    public string GridSelectRow(int? rowIndex = null, string? cellText = null, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_grid_select_row", Destructive = false, Idempotent = true), Description("Select row by index or by cell text.")]
+    public string GridSelectRow(
+        [Description("Zero-based row index to select. Provide either rowIndex or cellText.")] int? rowIndex = null,
+        [Description("Cell text to match (case-insensitive contains); selects the first row whose content matches. Used when rowIndex is omitted.")] string? cellText = null,
+        [Description("AutomationId of the target grid/list element.")] string? automationId = null,
+        [Description("Element Name/content of the grid; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_grid_select_row");
         var grid = FindGrid(automationId, name);
@@ -208,8 +226,11 @@ public sealed class DataGridTools
         }
     }
 
-    [McpServerTool(Name = "wpf_grid_double_click_row"), Description("Double-click a row by index.")]
-    public string GridDoubleClickRow(int rowIndex, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_grid_double_click_row", Destructive = false), Description("Double-click a row by index.")]
+    public string GridDoubleClickRow(
+        [Description("Zero-based row index to double-click.")] int rowIndex,
+        [Description("AutomationId of the target grid/list element.")] string? automationId = null,
+        [Description("Element Name/content of the grid; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_grid_double_click_row");
         var grid = FindGrid(automationId, name);
@@ -239,8 +260,11 @@ public sealed class DataGridTools
         }
     }
 
-    [McpServerTool(Name = "wpf_grid_find_row"), Description("Find row by column values.")]
-    public string GridFindRow(string searchText, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_grid_find_row", ReadOnly = true), Description("Find row by column values.")]
+    public string GridFindRow(
+        [Description("Text to search for in row content (case-insensitive contains match). Required.")] string searchText,
+        [Description("AutomationId of the target grid/list element.")] string? automationId = null,
+        [Description("Element Name/content of the grid; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_grid_find_row");
         var grid = FindGrid(automationId, name);
@@ -271,8 +295,11 @@ public sealed class DataGridTools
         }
     }
 
-    [McpServerTool(Name = "wpf_grid_sort_by_column"), Description("Click column header to sort.")]
-    public string GridSortByColumn(string columnName, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_grid_sort_by_column", Destructive = false), Description("Click column header to sort.")]
+    public string GridSortByColumn(
+        [Description("Column header text to sort by (case-insensitive contains match). Required.")] string columnName,
+        [Description("AutomationId of the target grid/list element.")] string? automationId = null,
+        [Description("Element Name/content of the grid; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_grid_sort_by_column");
         var grid = FindGrid(automationId, name);
@@ -299,8 +326,12 @@ public sealed class DataGridTools
         }
     }
 
-    [McpServerTool(Name = "wpf_grid_scroll_to_row"), Description("Scroll grid until row with given text is visible.")]
-    public string GridScrollToRow(string rowText, string? automationId = null, string? name = null, int maxScrollAttempts = 20)
+    [McpServerTool(Name = "wpf_grid_scroll_to_row", Destructive = false), Description("Scroll grid until row with given text is visible.")]
+    public string GridScrollToRow(
+        [Description("Row text to scroll to (case-insensitive contains match). Required.")] string rowText,
+        [Description("AutomationId of the target grid/list element.")] string? automationId = null,
+        [Description("Element Name/content of the grid; used when automationId is omitted.")] string? name = null,
+        [Description("Maximum number of scroll increments to attempt before giving up. Optional; default 20.")] int maxScrollAttempts = 20)
     {
         _audit.Record("wpf_grid_scroll_to_row");
         var grid = FindGrid(automationId, name);
@@ -329,8 +360,11 @@ public sealed class DataGridTools
         return Error($"Row with text '{rowText}' not found after scrolling.");
     }
 
-    [McpServerTool(Name = "wpf_tree_get_nodes"), Description("Return visible TreeView nodes.")]
-    public string TreeGetNodes(string? automationId = null, string? name = null, int maxDepth = 3)
+    [McpServerTool(Name = "wpf_tree_get_nodes", ReadOnly = true), Description("Return visible TreeView nodes.")]
+    public string TreeGetNodes(
+        [Description("AutomationId of the target TreeView element.")] string? automationId = null,
+        [Description("Element Name/content of the tree; used when automationId is omitted.")] string? name = null,
+        [Description("Maximum depth of nested nodes to traverse. Optional; default 3.")] int maxDepth = 3)
     {
         _audit.Record("wpf_tree_get_nodes");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -342,8 +376,11 @@ public sealed class DataGridTools
         return JsonSerializer.Serialize(new { nodeCount = nodes.Count, nodes }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_tree_expand_path"), Description("Expand tree path such as 'Settings > Network > Devices'.")]
-    public string TreeExpandPath(string path, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_tree_expand_path", Destructive = false, Idempotent = true), Description("Expand tree path such as 'Settings > Network > Devices'.")]
+    public string TreeExpandPath(
+        [Description("Node path to expand, separated by '>' (or ' > ' / ' → '), e.g. 'Settings > Network > Devices'. Each segment is matched case-insensitive contains. Required.")] string path,
+        [Description("AutomationId of the target TreeView element.")] string? automationId = null,
+        [Description("Element Name/content of the tree; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_tree_expand_path");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -371,8 +408,11 @@ public sealed class DataGridTools
         return Ok("path_expanded");
     }
 
-    [McpServerTool(Name = "wpf_tree_select_path"), Description("Select tree node by path.")]
-    public string TreeSelectPath(string path, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_tree_select_path", Destructive = false, Idempotent = true), Description("Select tree node by path.")]
+    public string TreeSelectPath(
+        [Description("Node path to select, separated by '>' (or ' > ' / ' → '), e.g. 'Settings > Network > Devices'. Intermediate segments are expanded; the final segment is selected. Each segment is matched case-insensitive contains. Required.")] string path,
+        [Description("AutomationId of the target TreeView element.")] string? automationId = null,
+        [Description("Element Name/content of the tree; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_tree_select_path");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -410,8 +450,11 @@ public sealed class DataGridTools
         return Ok("path_selected");
     }
 
-    [McpServerTool(Name = "wpf_tree_find_node"), Description("Find tree node by text or automation id.")]
-    public string TreeFindNode(string searchText, string? treeAutomationId = null, string? treeName = null)
+    [McpServerTool(Name = "wpf_tree_find_node", ReadOnly = true), Description("Find tree node by text or automation id.")]
+    public string TreeFindNode(
+        [Description("Text matched against node Name or AutomationId (case-insensitive contains). Required.")] string searchText,
+        [Description("AutomationId of the TreeView to search within.")] string? treeAutomationId = null,
+        [Description("Name/content of the TreeView to search within; used when treeAutomationId is omitted.")] string? treeName = null)
     {
         _audit.Record("wpf_tree_find_node");
         var criteria = new ElementCriteria { AutomationId = treeAutomationId, Name = treeName };
@@ -435,8 +478,11 @@ public sealed class DataGridTools
         return JsonSerializer.Serialize(new { matchCount = matches.Count, matches }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_items_get"), Description("Get items from a generic ItemsControl.")]
-    public string ItemsGet(string? automationId = null, string? name = null, int maxItems = 50)
+    [McpServerTool(Name = "wpf_items_get", ReadOnly = true), Description("Get items from a generic ItemsControl.")]
+    public string ItemsGet(
+        [Description("AutomationId of the target ItemsControl container.")] string? automationId = null,
+        [Description("Element Name/content of the container; used when automationId is omitted.")] string? name = null,
+        [Description("Maximum number of items to return. Optional; default 50.")] int maxItems = 50)
     {
         _audit.Record("wpf_items_get");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -460,8 +506,12 @@ public sealed class DataGridTools
         return JsonSerializer.Serialize(new { itemCount = items.Count, items }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_items_select"), Description("Select item in a generic ItemsControl by name or index.")]
-    public string ItemsSelect(string? itemName = null, int? index = null, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_items_select", Destructive = false, Idempotent = true), Description("Select item in a generic ItemsControl by name or index.")]
+    public string ItemsSelect(
+        [Description("Item text to match (case-insensitive contains). Provide either itemName or index.")] string? itemName = null,
+        [Description("Zero-based index of the item to select. Takes precedence over itemName when both are given.")] int? index = null,
+        [Description("AutomationId of the target ItemsControl container.")] string? automationId = null,
+        [Description("Element Name/content of the container; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_items_select");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };

@@ -22,7 +22,7 @@ public sealed class ProbeTools
         _logger = logger;
     }
 
-    [McpServerTool(Name = "wpf_probe_status"), Description("Check if probe is connected and responding.")]
+    [McpServerTool(Name = "wpf_probe_status", ReadOnly = true), Description("Check if probe is connected and responding.")]
     public async Task<string> ProbeStatus()
     {
         _audit.Record("wpf_probe_status");
@@ -38,8 +38,8 @@ public sealed class ProbeTools
         }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_probe_connect"), Description("Connect to the in-process probe via named pipe.")]
-    public async Task<string> ProbeConnect(string? pipeName = null)
+    [McpServerTool(Name = "wpf_probe_connect", Destructive = false), Description("Connect to the in-process probe via named pipe.")]
+    public async Task<string> ProbeConnect([Description("Explicit named-pipe name to connect to (e.g. 'wpfbuddy-mcp-probe-{ProcessId}'). Optional; if omitted, the pipe is resolved from the currently attached app's process id.")] string? pipeName = null)
     {
         _audit.Record("wpf_probe_connect");
         bool connected;
@@ -65,7 +65,7 @@ public sealed class ProbeTools
         return JsonSerializer.Serialize(new { connected, pipeName = _probe.PipeName }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_probe_disconnect"), Description("Disconnect from the in-process probe.")]
+    [McpServerTool(Name = "wpf_probe_disconnect", Destructive = false, Idempotent = true), Description("Disconnect from the in-process probe.")]
     public string ProbeDisconnect()
     {
         _audit.Record("wpf_probe_disconnect");
@@ -73,7 +73,7 @@ public sealed class ProbeTools
         return JsonSerializer.Serialize(new { result = "disconnected" }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_probe_capabilities"), Description("List methods supported by connected probe.")]
+    [McpServerTool(Name = "wpf_probe_capabilities", ReadOnly = true), Description("List methods supported by connected probe.")]
     public string ProbeCapabilities()
     {
         _audit.Record("wpf_probe_capabilities");
@@ -86,7 +86,7 @@ public sealed class ProbeTools
         return JsonSerializer.Serialize(new { connected = _probe.IsConnected, methods }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_probe_health"), Description("Run probe health check.")]
+    [McpServerTool(Name = "wpf_probe_health", ReadOnly = true), Description("Run probe health check.")]
     public async Task<string> ProbeHealth()
     {
         _audit.Record("wpf_probe_health");
@@ -105,7 +105,7 @@ public sealed class ProbeTools
         }, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_probe_install_instructions"), Description("Return instructions for installing the probe NuGet in a WPF app.")]
+    [McpServerTool(Name = "wpf_probe_install_instructions", ReadOnly = true), Description("Return instructions for installing the probe NuGet in a WPF app.")]
     public string ProbeInstallInstructions()
     {
         _audit.Record("wpf_probe_install_instructions");

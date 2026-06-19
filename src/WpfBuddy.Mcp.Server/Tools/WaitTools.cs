@@ -21,8 +21,12 @@ public sealed class WaitTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_wait_for_element"), Description("Wait until element exists (up to timeout ms).")]
-    public string WaitForElement(int timeoutMs = 10000, string? automationId = null, string? name = null, string? controlType = null)
+    [McpServerTool(Name = "wpf_wait_for_element", ReadOnly = true), Description("Wait until element exists (up to timeout ms).")]
+    public string WaitForElement(
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("AutomationId of the target element. Preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null,
+        [Description("Optional control type filter, e.g. Button, Edit, Text, CheckBox, ComboBox.")] string? controlType = null)
     {
         _audit.Record("wpf_wait_for_element");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name, ControlType = controlType };
@@ -32,8 +36,11 @@ public sealed class WaitTools
             : Error($"Element not found within {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_for_absent"), Description("Wait until element disappears (up to timeout ms).")]
-    public string WaitForAbsent(int timeoutMs = 10000, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_wait_for_absent", ReadOnly = true), Description("Wait until element disappears (up to timeout ms).")]
+    public string WaitForAbsent(
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("AutomationId of the target element. Preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_wait_for_absent");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -43,8 +50,11 @@ public sealed class WaitTools
             : Error($"Element still present after {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_for_enabled"), Description("Wait until element is enabled (up to timeout ms).")]
-    public string WaitForEnabled(int timeoutMs = 10000, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_wait_for_enabled", ReadOnly = true), Description("Wait until element is enabled (up to timeout ms).")]
+    public string WaitForEnabled(
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("AutomationId of the target element. Preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_wait_for_enabled");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -59,8 +69,13 @@ public sealed class WaitTools
             : Error($"Element not enabled within {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_for_text"), Description("Wait until element text equals or contains expected value.")]
-    public string WaitForText(string expectedText, int timeoutMs = 10000, string? automationId = null, string? name = null, bool contains = false)
+    [McpServerTool(Name = "wpf_wait_for_text", ReadOnly = true), Description("Wait until element text equals or contains expected value.")]
+    public string WaitForText(
+        [Description("The text to wait for. Required.")] string expectedText,
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("AutomationId of the target element. Preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null,
+        [Description("Matching mode: false (default) requires the text to equal expectedText (case-insensitive); true matches if the text contains expectedText.")] bool contains = false)
     {
         _audit.Record("wpf_wait_for_text");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -88,8 +103,14 @@ public sealed class WaitTools
             : Error($"Text did not match within {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_for"), Description("Generic wait: wait for selector to exist and/or have specific state.")]
-    public string WaitFor(int timeoutMs = 10000, string? automationId = null, string? name = null, string? controlType = null, bool? enabled = null, bool? visible = null)
+    [McpServerTool(Name = "wpf_wait_for", ReadOnly = true), Description("Generic wait: wait for selector to exist and/or have specific state.")]
+    public string WaitFor(
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("AutomationId of the target element. Preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null,
+        [Description("Optional control type filter, e.g. Button, Edit, Text, CheckBox, ComboBox.")] string? controlType = null,
+        [Description("Optional state condition: when set, wait until the element's enabled state matches this value (true=enabled, false=disabled). Null skips this check.")] bool? enabled = null,
+        [Description("Optional state condition: when set, wait until the element's visibility matches this value (true=visible/on-screen, false=offscreen). Null skips this check.")] bool? visible = null)
     {
         _audit.Record("wpf_wait_for");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name, ControlType = controlType };
@@ -107,8 +128,10 @@ public sealed class WaitTools
             : Error($"Condition not met within {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_until_snapshot_stable"), Description("Wait until UI tree stops changing for stabilityMs.")]
-    public string WaitUntilSnapshotStable(int stabilityMs = 500, int timeoutMs = 10000)
+    [McpServerTool(Name = "wpf_wait_until_snapshot_stable", ReadOnly = true), Description("Wait until UI tree stops changing for stabilityMs.")]
+    public string WaitUntilSnapshotStable(
+        [Description("Duration in milliseconds the UI tree must remain unchanged to be considered stable. Default 500.")] int stabilityMs = 500,
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000)
     {
         _audit.Record("wpf_wait_until_snapshot_stable");
         var sw = Stopwatch.StartNew();
@@ -141,8 +164,11 @@ public sealed class WaitTools
         return Error($"Snapshot did not stabilize within {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_for_window"), Description("Wait for a window/dialog with title or automation id.")]
-    public string WaitForWindow(int timeoutMs = 10000, string? title = null, string? automationId = null)
+    [McpServerTool(Name = "wpf_wait_for_window", ReadOnly = true), Description("Wait for a window/dialog with title or automation id.")]
+    public string WaitForWindow(
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("Window title to match (case-insensitive substring). Provide either title or automationId.")] string? title = null,
+        [Description("AutomationId of the target window; used when title is omitted.")] string? automationId = null)
     {
         _audit.Record("wpf_wait_for_window");
         var result = PollUntil(() =>
@@ -180,8 +206,11 @@ public sealed class WaitTools
         return false;
     }
 
-    [McpServerTool(Name = "wpf_wait_for_disabled"), Description("Wait until element is disabled (up to timeout ms).")]
-    public string WaitForDisabled(int timeoutMs = 10000, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_wait_for_disabled", ReadOnly = true), Description("Wait until element is disabled (up to timeout ms).")]
+    public string WaitForDisabled(
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("AutomationId of the target element. Preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_wait_for_disabled");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -196,8 +225,11 @@ public sealed class WaitTools
             : Error($"Element not disabled within {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_for_visible"), Description("Wait until element is visible/not offscreen (up to timeout ms).")]
-    public string WaitForVisible(int timeoutMs = 10000, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_wait_for_visible", ReadOnly = true), Description("Wait until element is visible/not offscreen (up to timeout ms).")]
+    public string WaitForVisible(
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("AutomationId of the target element. Preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_wait_for_visible");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -212,8 +244,11 @@ public sealed class WaitTools
             : Error($"Element not visible within {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_for_hidden"), Description("Wait until element is hidden/offscreen (up to timeout ms).")]
-    public string WaitForHidden(int timeoutMs = 10000, string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_wait_for_hidden", ReadOnly = true), Description("Wait until element is hidden/offscreen (up to timeout ms).")]
+    public string WaitForHidden(
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("AutomationId of the target element. Preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
         _audit.Record("wpf_wait_for_hidden");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -228,8 +263,13 @@ public sealed class WaitTools
             : Error($"Element not hidden within {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_for_value"), Description("Wait until element value equals or contains expected.")]
-    public string WaitForValue(string expectedValue, int timeoutMs = 10000, string? automationId = null, string? name = null, bool contains = false)
+    [McpServerTool(Name = "wpf_wait_for_value", ReadOnly = true), Description("Wait until element value equals or contains expected.")]
+    public string WaitForValue(
+        [Description("The value (from the ValuePattern) to wait for. Required.")] string expectedValue,
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("AutomationId of the target element. Preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null,
+        [Description("Matching mode: false (default) requires the value to equal expectedValue (case-insensitive); true matches if the value contains expectedValue.")] bool contains = false)
     {
         _audit.Record("wpf_wait_for_value");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -256,8 +296,12 @@ public sealed class WaitTools
             : Error($"Value did not match within {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_for_selection"), Description("Wait until a selection change occurs in a list/combo/tree.")]
-    public string WaitForSelection(int timeoutMs = 10000, string? automationId = null, string? name = null, string? expectedItem = null)
+    [McpServerTool(Name = "wpf_wait_for_selection", ReadOnly = true), Description("Wait until a selection change occurs in a list/combo/tree.")]
+    public string WaitForSelection(
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("AutomationId of the target list/combo/tree element. Preferred selector when available.")] string? automationId = null,
+        [Description("Element Name/content; used when automationId is omitted.")] string? name = null,
+        [Description("Optional. If set, waits until the selected item's name equals this value. If omitted, waits until the selection changes from its initial value.")] string? expectedItem = null)
     {
         _audit.Record("wpf_wait_for_selection");
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
@@ -294,8 +338,10 @@ public sealed class WaitTools
             : Error($"Selection did not change within {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_for_dialog"), Description("Wait for a modal dialog to appear.")]
-    public string WaitForDialog(int timeoutMs = 10000, string? title = null)
+    [McpServerTool(Name = "wpf_wait_for_dialog", ReadOnly = true), Description("Wait for a modal dialog to appear.")]
+    public string WaitForDialog(
+        [Description("Maximum time to wait in milliseconds before giving up. Default 10000.")] int timeoutMs = 10000,
+        [Description("Optional dialog title to match (case-insensitive substring). If omitted, waits for any Window-type element to appear.")] string? title = null)
     {
         _audit.Record("wpf_wait_for_dialog");
         var result = PollUntil(() =>
@@ -327,8 +373,10 @@ public sealed class WaitTools
             : Error($"Dialog not found within {timeoutMs}ms.");
     }
 
-    [McpServerTool(Name = "wpf_wait_for_navigation"), Description("Wait for view/page/content transition by detecting UI tree change.")]
-    public string WaitForNavigation(int timeoutMs = 10000, int stabilityMs = 300)
+    [McpServerTool(Name = "wpf_wait_for_navigation", ReadOnly = true), Description("Wait for view/page/content transition by detecting UI tree change.")]
+    public string WaitForNavigation(
+        [Description("Maximum time to wait in milliseconds for the UI tree to change. Default 10000.")] int timeoutMs = 10000,
+        [Description("Settling delay in milliseconds after a change is detected, to let the new view finish rendering. Default 300.")] int stabilityMs = 300)
     {
         _audit.Record("wpf_wait_for_navigation");
         var sw = Stopwatch.StartNew();
