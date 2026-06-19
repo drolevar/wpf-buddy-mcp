@@ -22,11 +22,22 @@ public sealed class ClipboardTools
         try
         {
             string? text = null;
-            var thread = new Thread(() => text = System.Windows.Forms.Clipboard.GetText());
+            Exception? threadEx = null;
+            var thread = new Thread(() =>
+            {
+                try { text = System.Windows.Forms.Clipboard.GetText(); }
+                catch (Exception ex) { threadEx = ex; }
+            });
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
             thread.Join();
-            return JsonSerializer.Serialize(new { text = text ?? "", hasContent = !string.IsNullOrEmpty(text) }, JsonOptions.Default);
+            if (threadEx != null)
+                return JsonSerializer.Serialize(new { error = threadEx.Message }, JsonOptions.Default);
+            const int maxLen = 100000;
+            var fullText = text ?? "";
+            var truncated = fullText.Length > maxLen;
+            var returnText = truncated ? fullText.Substring(0, maxLen) : fullText;
+            return JsonSerializer.Serialize(new { text = returnText, hasContent = !string.IsNullOrEmpty(fullText), truncated, fullLength = fullText.Length }, JsonOptions.Default);
         }
         catch (Exception ex)
         {
@@ -40,11 +51,24 @@ public sealed class ClipboardTools
         _audit.Record("wpf_set_clipboard");
         try
         {
-            var thread = new Thread(() => System.Windows.Forms.Clipboard.SetText(text));
+            Exception? threadEx = null;
+            var thread = new Thread(() =>
+            {
+                try
+                {
+                    if (string.IsNullOrEmpty(text))
+                        System.Windows.Forms.Clipboard.Clear();
+                    else
+                        System.Windows.Forms.Clipboard.SetText(text);
+                }
+                catch (Exception ex) { threadEx = ex; }
+            });
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
             thread.Join();
-            return JsonSerializer.Serialize(new { result = "clipboard_set", length = text.Length }, JsonOptions.Default);
+            if (threadEx != null)
+                return JsonSerializer.Serialize(new { error = threadEx.Message }, JsonOptions.Default);
+            return JsonSerializer.Serialize(new { result = "clipboard_set", length = text?.Length ?? 0 }, JsonOptions.Default);
         }
         catch (Exception ex)
         {
@@ -58,10 +82,17 @@ public sealed class ClipboardTools
         _audit.Record("wpf_clear_clipboard");
         try
         {
-            var thread = new Thread(() => System.Windows.Forms.Clipboard.Clear());
+            Exception? threadEx = null;
+            var thread = new Thread(() =>
+            {
+                try { System.Windows.Forms.Clipboard.Clear(); }
+                catch (Exception ex) { threadEx = ex; }
+            });
             thread.SetApartmentState(ApartmentState.STA);
             thread.Start();
             thread.Join();
+            if (threadEx != null)
+                return JsonSerializer.Serialize(new { error = threadEx.Message }, JsonOptions.Default);
             return JsonSerializer.Serialize(new { result = "clipboard_cleared" }, JsonOptions.Default);
         }
         catch (Exception ex)
@@ -98,8 +129,8 @@ public sealed class ClipboardTools
 
             return JsonSerializer.Serialize(new
             {
-                appTheme = appsUseLightTheme?.Equals(0) == true ? "dark" : "light",
-                systemTheme = systemUsesLightTheme?.Equals(0) == true ? "dark" : "light"
+                appTheme = appsUseLightTheme == null ? "unknown" : (appsUseLightTheme.Equals(0) ? "dark" : "light"),
+                systemTheme = systemUsesLightTheme == null ? "unknown" : (systemUsesLightTheme.Equals(0) ? "dark" : "light")
             }, JsonOptions.Default);
         }
         catch (Exception ex)

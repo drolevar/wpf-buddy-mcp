@@ -113,12 +113,19 @@ public sealed class ExplorerService
             var controlSignature = string.Join("|", children.Take(10).Select(c =>
                 $"{c.Properties.ControlType.ValueOrDefault}:{c.Properties.AutomationId.ValueOrDefault}"));
 
-            return $"{title}##{controlSignature}".GetHashCode().ToString("x8");
+            return StableFingerprint($"{title}##{controlSignature}");
         }
         catch
         {
             return "error";
         }
+    }
+
+    private static string StableFingerprint(string signature)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(signature));
+        // Use a short, stable hex prefix as the node id.
+        return Convert.ToHexString(bytes, 0, 4).ToLowerInvariant();
     }
 
     private ScreenInfo CaptureScreen(string fingerprint)
@@ -174,6 +181,12 @@ public sealed class ExplorerService
                 var automationId = el.Properties.AutomationId.ValueOrDefault ?? "";
                 var name = el.Properties.Name.ValueOrDefault ?? "";
 
+                if (IsDestructive(name) || IsDestructive(automationId))
+                {
+                    // Skip controls that may trigger destructive/irreversible actions.
+                    continue;
+                }
+
                 if (IsNavigationalType(controlType) && !string.IsNullOrEmpty(name))
                 {
                     queue.Enqueue(new ExplorationAction
@@ -194,6 +207,10 @@ public sealed class ExplorerService
     {
         try
         {
+            // Defensive gate: never invoke controls that may trigger destructive actions.
+            if (IsDestructive(action.ElementName) || IsDestructive(action.ElementAutomationId))
+                return false;
+
             var criteria = new ElementCriteria();
             if (!string.IsNullOrEmpty(action.ElementAutomationId))
                 criteria.AutomationId = action.ElementAutomationId;
@@ -241,17 +258,33 @@ public sealed class ExplorerService
 
         foreach (var screen in screens)
         {
-            var label = screen.WindowTitle.Replace("\"", "'");
+            var label = SanitizeMermaidLabel(screen.WindowTitle);
             sb.AppendLine($"    {screen.Fingerprint} : {label}");
         }
 
         foreach (var t in transitions.DistinctBy(x => $"{x.From}->{x.To}:{x.Action}"))
         {
-            var label = t.Action?.Replace("\"", "'") ?? "action";
+            var label = SanitizeMermaidLabel(t.Action) ?? "action";
             sb.AppendLine($"    {t.From} --> {t.To} : {label}");
         }
 
         return sb.ToString();
+    }
+
+    private static string? SanitizeMermaidLabel(string? label)
+    {
+        if (label is null) return null;
+
+        var s = label
+            .Replace("\r", " ")
+            .Replace("\n", " ")
+            .Replace("\"", "'")
+            .Replace("-->", "->")   // arrow operator
+            .Replace("%%", "%")     // comment marker
+            .Replace(":", " ");     // transition/label separator
+
+        s = s.Trim();
+        return s.Length == 0 ? null : s;
     }
 
     private static bool IsActionable(string? controlType) =>
@@ -264,6 +297,23 @@ public sealed class ExplorerService
 
     private static bool IsInputElement(UiElement e) =>
         e.ControlType is "TextBox" or "ComboBox" or "CheckBox" or "RadioButton" or "Slider";
+
+    private static readonly string[] DestructiveKeywords =
+    [
+        "delete", "remove", "send", "submit", "pay", "format",
+        "drop", "purge", "discard", "reset", "clear", "save"
+    ];
+
+    private static bool IsDestructive(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+        foreach (var kw in DestructiveKeywords)
+        {
+            if (text.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
 
     private static bool IsNavigationalType(string controlType) =>
         controlType is "Button" or "MenuItem" or "TabItem" or "Hyperlink" or "TreeItem";

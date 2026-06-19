@@ -121,6 +121,11 @@ public sealed class DataGridTools
         if (!grid.Patterns.Grid.IsSupported)
             return Error("Grid pattern not supported.");
 
+        var gridRowCount = grid.Patterns.Grid.Pattern.RowCount.ValueOrDefault;
+        var gridColCount = grid.Patterns.Grid.Pattern.ColumnCount.ValueOrDefault;
+        if (row < 0 || row >= gridRowCount || column < 0 || column >= gridColCount)
+            return Error($"Cell ({row},{column}) out of range (rowCount={gridRowCount}, columnCount={gridColCount}).");
+
         try
         {
             var cell = grid.Patterns.Grid.Pattern.GetItem(row, column);
@@ -157,6 +162,11 @@ public sealed class DataGridTools
         if (!grid.Patterns.Grid.IsSupported)
             return Error("Grid pattern not supported.");
 
+        var gridRowCount = grid.Patterns.Grid.Pattern.RowCount.ValueOrDefault;
+        var gridColCount = grid.Patterns.Grid.Pattern.ColumnCount.ValueOrDefault;
+        if (row < 0 || row >= gridRowCount || column < 0 || column >= gridColCount)
+            return Error($"Cell ({row},{column}) out of range (rowCount={gridRowCount}, columnCount={gridColCount}).");
+
         try
         {
             var cell = grid.Patterns.Grid.Pattern.GetItem(row, column);
@@ -165,9 +175,13 @@ public sealed class DataGridTools
                 cell.Patterns.Value.Pattern.SetValue(value);
                 return Ok("cell_set");
             }
-            // Fallback: double-click and type
+            // Fallback: double-click, clear existing content, then type
             cell.DoubleClick();
             Thread.Sleep(50);
+            FlaUI.Core.Input.Keyboard.Press(FlaUI.Core.WindowsAPI.VirtualKeyShort.CONTROL);
+            FlaUI.Core.Input.Keyboard.Type(FlaUI.Core.WindowsAPI.VirtualKeyShort.KEY_A);
+            FlaUI.Core.Input.Keyboard.Release(FlaUI.Core.WindowsAPI.VirtualKeyShort.CONTROL);
+            FlaUI.Core.Input.Keyboard.Type(FlaUI.Core.WindowsAPI.VirtualKeyShort.DELETE);
             FlaUI.Core.Input.Keyboard.Type(value);
             return Ok("cell_typed");
         }
@@ -204,6 +218,8 @@ public sealed class DataGridTools
             if (!string.IsNullOrEmpty(cellText))
             {
                 var items = grid.FindAll(TreeScope.Descendants, grid.Automation.ConditionFactory.ByControlType(ControlType.DataItem));
+                if (items.Length == 0)
+                    items = grid.FindAll(TreeScope.Descendants, grid.Automation.ConditionFactory.ByControlType(ControlType.ListItem));
                 foreach (var item in items)
                 {
                     if (item.Properties.Name.ValueOrDefault?.Contains(cellText, StringComparison.OrdinalIgnoreCase) == true)
@@ -341,6 +357,8 @@ public sealed class DataGridTools
         for (int i = 0; i < maxScrollAttempts; i++)
         {
             var items = grid.FindAll(TreeScope.Descendants, grid.Automation.ConditionFactory.ByControlType(ControlType.DataItem));
+            if (items.Length == 0)
+                items = grid.FindAll(TreeScope.Descendants, grid.Automation.ConditionFactory.ByControlType(ControlType.ListItem));
             var match = items.FirstOrDefault(item => item.Properties.Name.ValueOrDefault?.Contains(rowText, StringComparison.OrdinalIgnoreCase) == true);
             if (match is not null)
             {
@@ -522,8 +540,10 @@ public sealed class DataGridTools
         var children = container.FindAll(TreeScope.Children, FlaUI.Core.Conditions.TrueCondition.Default);
 
         AutomationElement? target = null;
-        if (index.HasValue && index.Value < children.Length)
+        if (index.HasValue)
         {
+            if (index.Value < 0 || index.Value >= children.Length)
+                return Error($"index {index.Value} out of range (count={children.Length})");
             target = children[index.Value];
         }
         else if (!string.IsNullOrEmpty(itemName))

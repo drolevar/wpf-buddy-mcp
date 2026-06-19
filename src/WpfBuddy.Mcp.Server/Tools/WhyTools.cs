@@ -70,7 +70,7 @@ public sealed class WhyTools
                     var commandResponse = await _probe.SendAsync("get_command_state");
                     if (commandResponse?.Data is not null)
                     {
-                        var commands = JsonSerializer.Deserialize<List<CommandInfo>>(commandResponse.Data);
+                        var commands = JsonSerializer.Deserialize<List<CommandInfo>>(commandResponse.Data, JsonOptions.Default);
                         var elementName = element.Properties.Name.ValueOrDefault ?? element.Properties.AutomationId.ValueOrDefault;
                         var matchedCommand = commands?.FirstOrDefault(c =>
                             c.Name.Contains(elementName ?? "", StringComparison.OrdinalIgnoreCase) ||
@@ -91,12 +91,23 @@ public sealed class WhyTools
                     var bindingResponse = await _probe.SendAsync("get_binding_errors");
                     if (bindingResponse?.Data is not null)
                     {
-                        analysis.Reasons.Add(new DisabledReason
+                        var errInfo = JsonSerializer.Deserialize<BindingErrorsInfo>(bindingResponse.Data, JsonOptions.Default);
+                        if (errInfo is not null && errInfo.ErrorCount > 0)
                         {
-                            Category = "binding_errors",
-                            Description = "Binding errors detected that may prevent the element from enabling.",
-                            Suggestion = "Check DataContext and binding paths — a broken binding means the ViewModel property isn't reaching the control."
-                        });
+                            var messages = errInfo.Errors?
+                                .Select(e => e.Message)
+                                .Where(m => !string.IsNullOrEmpty(m))
+                                .ToList();
+                            var detail = messages is { Count: > 0 }
+                                ? $" Messages: {string.Join("; ", messages)}"
+                                : "";
+                            analysis.Reasons.Add(new DisabledReason
+                            {
+                                Category = "binding_errors",
+                                Description = $"{errInfo.ErrorCount} binding error(s) detected that may prevent the element from enabling.{detail}",
+                                Suggestion = "Check DataContext and binding paths — a broken binding means the ViewModel property isn't reaching the control."
+                            });
+                        }
                     }
 
                     // Check ViewModel state
@@ -171,8 +182,8 @@ public sealed class WhyTools
                 reasons.Add(new
                 {
                     category = "zero_size",
-                    description = "Element has zero width or height — likely Visibility=Hidden or constrained by layout.",
-                    suggestion = "Check if Visibility is bound to a ViewModel property. Set it to Visible or check the binding."
+                    description = "Element has zero width or height. This may be due to Visibility=Collapsed, a zero-size layout (e.g. empty content, zero-width column/row, or unconstrained measure), or a parent that gives it no space — it is not necessarily Visibility=Hidden (Hidden still reserves layout space).",
+                    suggestion = "Check if Visibility is bound to a ViewModel property and whether the layout allocates space. Set it to Visible or fix the layout/binding."
                 });
             }
 
@@ -305,13 +316,14 @@ public sealed class WhyTools
                         reasons.Add(new
                         {
                             category = "binding_info",
-                            description = $"Binding data: {bindingResponse.Data}",
+                            description = $"Binding data (window-wide bindings, not element-scoped): {bindingResponse.Data}",
                             suggestion = "Check if the bound property on the ViewModel has been set."
                         });
                     }
 
+                    var key = automationId ?? name ?? "";
                     var errResponse = await _probe.SendAsync("get_binding_errors");
-                    if (errResponse?.Data is not null && errResponse.Data.Contains(automationId ?? name ?? ""))
+                    if (errResponse?.Data is not null && !string.IsNullOrEmpty(key) && errResponse.Data.Contains(key))
                     {
                         reasons.Add(new
                         {
@@ -471,5 +483,18 @@ public sealed class WhyTools
     {
         public string Name { get; set; } = string.Empty;
         public bool CanExecute { get; set; }
+    }
+
+    private sealed class BindingErrorsInfo
+    {
+        public int ErrorCount { get; set; }
+        public List<BindingErrorEntry>? Errors { get; set; }
+    }
+
+    private sealed class BindingErrorEntry
+    {
+        public string? Window { get; set; }
+        public string? Message { get; set; }
+        public string? BindingPath { get; set; }
     }
 }

@@ -15,6 +15,18 @@ public sealed class ElementSelector
 
     [JsonPropertyName("fallbacks")]
     public List<ElementCriteria>? Fallbacks { get; set; }
+
+    /// <summary>Set when the primary selector matched more than one (or zero) element in the live tree.</summary>
+    [JsonPropertyName("nonUnique")]
+    public bool NonUnique { get; set; }
+
+    /// <summary>Number of live-tree matches for the primary selector when uniqueness was validated.</summary>
+    [JsonPropertyName("matchCount")]
+    public int? MatchCount { get; set; }
+
+    /// <summary>Set when the primary selector lacks a stable constraint (e.g. only ControlType=="Unknown").</summary>
+    [JsonPropertyName("lowConfidence")]
+    public bool LowConfidence { get; set; }
 }
 
 public sealed class WindowSelector

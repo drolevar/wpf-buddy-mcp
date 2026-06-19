@@ -30,16 +30,17 @@ public sealed class AccessibilityTools
         if (window is null)
             return Error("No window attached.");
 
-        var elements = BuildAccessibilityTree(window, maxDepth, 0);
-        var issues = elements.SelectMany(e => GetAccessibilityIssues(e)).ToList();
+        var issues = new List<object>();
+        int elementCount = 0;
+        var tree = BuildAccessibilityTree(window, maxDepth, 0, issues, ref elementCount);
 
         return JsonSerializer.Serialize(new
         {
             windowTitle = window.Title,
-            elementCount = elements.Count,
+            elementCount,
             issueCount = issues.Count,
             issues = issues.Take(50).ToList(),
-            tree = elements
+            tree
         }, JsonOptions.Default);
     }
 
@@ -121,13 +122,6 @@ public sealed class AccessibilityTools
                     bounds = new { x = el.BoundingRectangle.X, y = el.BoundingRectangle.Y }
                 });
             }
-        }
-
-        // Check for expected tab order (top-to-bottom, left-to-right)
-        var issues = new List<string>();
-        for (int i = 1; i < focusable.Count; i++)
-        {
-            // Simple heuristic: check elements aren't jumping wildly
         }
 
         return JsonSerializer.Serialize(new
@@ -285,7 +279,6 @@ public sealed class AccessibilityTools
         int missingNames = 0;
         int missingAutomationIds = 0;
         int notFocusable = 0;
-        int patternIssues = 0;
         int offscreen = 0;
 
         foreach (var el in allElements)
@@ -326,8 +319,7 @@ public sealed class AccessibilityTools
                 offscreenElements = offscreen,
                 missingAccessibleNames = missingNames,
                 missingAutomationIds,
-                notKeyboardFocusable = notFocusable,
-                patternIssues
+                notKeyboardFocusable = notFocusable
             },
             recommendations = GenerateRecommendations(missingAutomationIds, missingNames, notFocusable, interactive)
         };
@@ -335,7 +327,7 @@ public sealed class AccessibilityTools
         return JsonSerializer.Serialize(report, JsonOptions.Default);
     }
 
-    private List<object> BuildAccessibilityTree(AutomationElement element, int maxDepth, int currentDepth)
+    private List<object> BuildAccessibilityTree(AutomationElement element, int maxDepth, int currentDepth, List<object> issues, ref int elementCount)
     {
         var result = new List<object>();
         if (currentDepth >= maxDepth) return result;
@@ -343,27 +335,39 @@ public sealed class AccessibilityTools
         var children = element.FindAll(TreeScope.Children, FlaUI.Core.Conditions.TrueCondition.Default);
         foreach (var child in children)
         {
+            elementCount++;
             var ct = child.Properties.ControlType.ValueOrDefault;
+            var automationId = child.Properties.AutomationId.ValueOrDefault;
+            var name = child.Properties.Name.ValueOrDefault;
+
+            // Minimal real check: actionable elements missing both an accessible name and an automation id.
+            if (IsInteractiveControlType(ct.ToString())
+                && string.IsNullOrEmpty(name)
+                && string.IsNullOrEmpty(automationId))
+            {
+                issues.Add(new
+                {
+                    controlType = ct.ToString(),
+                    issue = "Actionable element has neither an accessible name nor an AutomationId."
+                });
+            }
+
+            var childNodes = BuildAccessibilityTree(child, maxDepth, currentDepth + 1, issues, ref elementCount);
             var node = new
             {
-                automationId = child.Properties.AutomationId.ValueOrDefault,
-                name = child.Properties.Name.ValueOrDefault,
+                automationId,
+                name,
                 controlType = ct.ToString(),
                 isKeyboardFocusable = child.Properties.IsKeyboardFocusable.ValueOrDefault,
                 helpText = child.Properties.HelpText.ValueOrDefault,
                 accessKey = child.Properties.AccessKey.ValueOrDefault,
                 isEnabled = child.Properties.IsEnabled.ValueOrDefault,
-                isOffscreen = child.Properties.IsOffscreen.ValueOrDefault
+                isOffscreen = child.Properties.IsOffscreen.ValueOrDefault,
+                children = childNodes
             };
             result.Add(node);
         }
         return result;
-    }
-
-    private static List<object> GetAccessibilityIssues(object element)
-    {
-        // Simplified - in a real implementation would inspect each property
-        return new List<object>();
     }
 
     private static List<string> GenerateRecommendations(int missingIds, int missingNames, int notFocusable, int total)

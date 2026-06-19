@@ -25,11 +25,11 @@ public sealed class DiagnosticsTools
 
         var allElements = _uia.QueryElements();
 
-        var missingIds = allElements
+        var allMissingIds = allElements
             .Where(e => string.IsNullOrEmpty(e.AutomationId) && IsActionable(e.ControlType))
             .Select(e => new { e.Name, e.ControlType, e.ClassName })
-            .Take(20)
             .ToList();
+        var missingIds = allMissingIds.Take(20).ToList();
 
         var duplicateIds = allElements
             .Where(e => !string.IsNullOrEmpty(e.AutomationId))
@@ -38,11 +38,11 @@ public sealed class DiagnosticsTools
             .Select(g => new { automationId = g.Key, count = g.Count() })
             .ToList();
 
-        var missingNames = allElements
+        var allMissingNames = allElements
             .Where(e => string.IsNullOrEmpty(e.Name) && string.IsNullOrEmpty(e.AutomationId) && IsActionable(e.ControlType))
             .Select(e => new { e.ControlType, e.ClassName })
-            .Take(20)
             .ToList();
+        var missingNames = allMissingNames.Take(20).ToList();
 
         var report = new
         {
@@ -50,9 +50,9 @@ public sealed class DiagnosticsTools
             {
                 totalElements = allElements.Count,
                 actionableElements = allElements.Count(e => IsActionable(e.ControlType)),
-                missingAutomationIds = missingIds.Count,
+                missingAutomationIds = allMissingIds.Count,
                 duplicateAutomationIds = duplicateIds.Count,
-                missingAccessibleNames = missingNames.Count
+                missingAccessibleNames = allMissingNames.Count
             },
             missingAutomationIds = missingIds,
             duplicateAutomationIds = duplicateIds,
@@ -62,7 +62,7 @@ public sealed class DiagnosticsTools
         return JsonSerializer.Serialize(report, JsonOptions.Default);
     }
 
-    [McpServerTool(Name = "wpf_analyze_automation_quality", ReadOnly = true), Description("Find missing AutomationIds, missing names, duplicate IDs, invisible focusable controls.")]
+    [McpServerTool(Name = "wpf_analyze_automation_quality", ReadOnly = true), Description("Score reflects AutomationId coverage of actionable controls only; also reports missing names and duplicate IDs as recommendations.")]
     public string AnalyzeAutomationQuality()
     {
         _audit.Record("wpf_analyze_automation_quality");
@@ -152,7 +152,7 @@ public sealed class DiagnosticsTools
     private static bool IsActionable(string? controlType)
     {
         if (string.IsNullOrEmpty(controlType)) return false;
-        return controlType is "Button" or "TextBox" or "ComboBox" or "CheckBox"
+        return controlType is "Button" or "TextBox" or "Edit" or "ComboBox" or "CheckBox"
             or "RadioButton" or "MenuItem" or "Tab" or "TabItem" or "ListItem"
             or "DataItem" or "TreeItem" or "Slider" or "Hyperlink";
     }
