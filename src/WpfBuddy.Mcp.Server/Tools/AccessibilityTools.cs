@@ -394,5 +394,5 @@ public sealed class AccessibilityTools
     }
 
     private static string Error(string message) =>
-        throw new McpException(message);
+        throw ToolError.Fail(message);
 }

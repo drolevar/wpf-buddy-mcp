@@ -456,7 +456,7 @@ public sealed class WhyTools
             or "DataItem" or "TreeItem" or "Slider" or "Hyperlink";
 
     private static string Error(string message) =>
-        throw new McpException(message);
+        throw ToolError.Fail(message);
 
     private sealed class DisabledAnalysis
     {

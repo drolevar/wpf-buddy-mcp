@@ -32,7 +32,7 @@ public sealed class RecordingTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -47,7 +47,7 @@ public sealed class RecordingTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -59,7 +59,7 @@ public sealed class RecordingTools
         {
             var recording = JsonSerializer.Deserialize<RecordingModel>(workflowJson, JsonOptions.Default);
             if (recording is null || recording.Steps.Count == 0)
-                throw new McpException("Invalid or empty workflow.");
+                throw ToolError.Fail("Invalid or empty workflow.");
 
             var results = new List<StepResult>();
             foreach (var step in recording.Steps)
@@ -88,7 +88,7 @@ public sealed class RecordingTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -100,7 +100,7 @@ public sealed class RecordingTools
         {
             var recording = JsonSerializer.Deserialize<RecordingModel>(workflowJson, JsonOptions.Default);
             if (recording is null)
-                throw new McpException("Invalid workflow JSON.");
+                throw ToolError.Fail("Invalid workflow JSON.");
 
             var issues = new List<object>();
 
@@ -138,7 +138,7 @@ public sealed class RecordingTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -150,14 +150,14 @@ public sealed class RecordingTools
         {
             var recording = JsonSerializer.Deserialize<RecordingModel>(workflowJson, JsonOptions.Default);
             if (recording is null)
-                throw new McpException("Invalid workflow JSON.");
+                throw ToolError.Fail("Invalid workflow JSON.");
 
             var testCode = _recording.GenerateTestCode(recording);
             return JsonSerializer.Serialize(new { language = "csharp", framework = "xunit", code = testCode }, JsonOptions.Default);
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -170,9 +170,9 @@ public sealed class RecordingTools
             return workflowJson;
 
         if (_recording.IsRecording)
-            throw new McpException("Recording still in progress. Stop it first.");
+            throw ToolError.Fail("Recording still in progress. Stop it first.");
 
-        throw new McpException("No recording available. Start and stop a recording first.");
+        throw ToolError.Fail("No recording available. Start and stop a recording first.");
     }
 
     [McpServerTool(Name = "wpf_import_recording", ReadOnly = true), Description("Load and validate workflow JSON.")]
@@ -183,7 +183,7 @@ public sealed class RecordingTools
         {
             var recording = JsonSerializer.Deserialize<RecordingModel>(workflowJson, JsonOptions.Default);
             if (recording is null)
-                throw new McpException("Invalid workflow JSON.");
+                throw ToolError.Fail("Invalid workflow JSON.");
 
             return JsonSerializer.Serialize(new
             {
@@ -195,7 +195,7 @@ public sealed class RecordingTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -204,7 +204,7 @@ public sealed class RecordingTools
     {
         _audit.Record("wpf_record_pause");
         if (!_recording.IsRecording)
-            throw new McpException("No recording in progress.");
+            throw ToolError.Fail("No recording in progress.");
 
         _recording.Pause();
         return JsonSerializer.Serialize(new { result = "recording_paused" }, JsonOptions.Default);
@@ -224,7 +224,7 @@ public sealed class RecordingTools
     {
         _audit.Record("wpf_record_step");
         if (!_recording.IsRecording)
-            throw new McpException("No recording in progress.");
+            throw ToolError.Fail("No recording in progress.");
 
         _recording.AddStep(new RecordingStep
         {
@@ -245,7 +245,7 @@ public sealed class RecordingTools
     {
         _audit.Record("wpf_record_assertion");
         if (!_recording.IsRecording)
-            throw new McpException("No recording in progress.");
+            throw ToolError.Fail("No recording in progress.");
 
         _recording.AddStep(new RecordingStep
         {
@@ -268,7 +268,7 @@ public sealed class RecordingTools
         {
             var recording = JsonSerializer.Deserialize<RecordingModel>(workflowJson, JsonOptions.Default);
             if (recording is null)
-                throw new McpException("Invalid workflow JSON.");
+                throw ToolError.Fail("Invalid workflow JSON.");
 
             RecordingStep? step = null;
             if (stepIndex.HasValue && stepIndex.Value < recording.Steps.Count)
@@ -277,7 +277,7 @@ public sealed class RecordingTools
                 step = recording.Steps.FirstOrDefault(s => s.Name == stepName);
 
             if (step is null)
-                throw new McpException("Step not found.");
+                throw ToolError.Fail("Step not found.");
 
             if (step.Action is not null)
             {
@@ -290,11 +290,11 @@ public sealed class RecordingTools
                 return JsonSerializer.Serialize(new { result = passed ? "pass" : "fail", step = step.Name ?? step.Assert }, JsonOptions.Default);
             }
 
-            throw new McpException("Step has no action or assertion.");
+            throw ToolError.Fail("Step has no action or assertion.");
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -306,7 +306,7 @@ public sealed class RecordingTools
         {
             var recording = JsonSerializer.Deserialize<RecordingModel>(workflowJson, JsonOptions.Default);
             if (recording is null)
-                throw new McpException("Invalid workflow JSON.");
+                throw ToolError.Fail("Invalid workflow JSON.");
 
             int optimized = 0;
             foreach (var step in recording.Steps)
@@ -342,7 +342,7 @@ public sealed class RecordingTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -355,10 +355,10 @@ public sealed class RecordingTools
         {
             var recording = JsonSerializer.Deserialize<RecordingModel>(workflowJson, JsonOptions.Default);
             if (recording is null)
-                throw new McpException("Invalid workflow JSON.");
+                throw ToolError.Fail("Invalid workflow JSON.");
 
             if (failedStepIndex >= recording.Steps.Count)
-                throw new McpException("Step index out of range.");
+                throw ToolError.Fail("Step index out of range.");
 
             var step = recording.Steps[failedStepIndex];
             var diagnosis = new List<string>();
@@ -414,7 +414,7 @@ public sealed class RecordingTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -430,7 +430,7 @@ public sealed class RecordingTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 

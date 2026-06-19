@@ -163,7 +163,7 @@ public sealed class MvvmTools
     }
 
     private static string Error(string message) =>
-        throw new McpException(message);
+        throw ToolError.Fail(message);
 
     private class CommandInfo
     {

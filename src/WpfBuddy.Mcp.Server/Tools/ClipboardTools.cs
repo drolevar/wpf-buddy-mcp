@@ -33,7 +33,7 @@ public sealed class ClipboardTools
             thread.Start();
             thread.Join();
             if (threadEx != null)
-                throw new McpException(threadEx.Message);
+                throw ToolError.Fail(threadEx.Message);
             const int maxLen = 100000;
             var fullText = text ?? "";
             var truncated = fullText.Length > maxLen;
@@ -42,7 +42,7 @@ public sealed class ClipboardTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -68,12 +68,12 @@ public sealed class ClipboardTools
             thread.Start();
             thread.Join();
             if (threadEx != null)
-                throw new McpException(threadEx.Message);
+                throw ToolError.Fail(threadEx.Message);
             return JsonSerializer.Serialize(new { result = "clipboard_set", length = text?.Length ?? 0 }, JsonOptions.Default);
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -93,12 +93,12 @@ public sealed class ClipboardTools
             thread.Start();
             thread.Join();
             if (threadEx != null)
-                throw new McpException(threadEx.Message);
+                throw ToolError.Fail(threadEx.Message);
             return JsonSerializer.Serialize(new { result = "clipboard_cleared" }, JsonOptions.Default);
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -136,7 +136,7 @@ public sealed class ClipboardTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -161,7 +161,7 @@ public sealed class ClipboardTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 }

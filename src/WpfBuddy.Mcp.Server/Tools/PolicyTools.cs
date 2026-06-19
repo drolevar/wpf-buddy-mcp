@@ -120,12 +120,12 @@ public sealed class PolicyTools
         lock (_policyLock)
         {
             if (!_currentPolicy.AllowDestructive)
-                throw new McpException("Destructive actions are disabled by policy. Enable via wpf_set_policy(allowDestructive: true).");
+                throw ToolError.Fail("Destructive actions are disabled by policy. Enable via wpf_set_policy(allowDestructive: true).");
         }
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         var element = _uia.FindElement(criteria);
         if (element is null)
-            throw new McpException("Element not found.");
+            throw ToolError.Fail("Element not found.");
 
         try
         {
@@ -151,7 +151,7 @@ public sealed class PolicyTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 

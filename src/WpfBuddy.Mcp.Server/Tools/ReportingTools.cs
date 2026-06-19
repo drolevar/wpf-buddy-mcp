@@ -28,7 +28,7 @@ public sealed class ReportingTools
         _audit.Record("wpf_generate_testability_report");
         var window = _session.ActiveWindow;
         if (window is null)
-            throw new McpException("No window attached.");
+            throw ToolError.Fail("No window attached.");
 
         var allElements = _uia.QueryElements();
         var total = allElements.Count;
@@ -151,7 +151,7 @@ public sealed class ReportingTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 
@@ -187,7 +187,7 @@ public sealed class ReportingTools
         }
         catch (Exception ex)
         {
-            throw new McpException(ex.Message);
+            throw ToolError.Fail(ex.Message);
         }
     }
 

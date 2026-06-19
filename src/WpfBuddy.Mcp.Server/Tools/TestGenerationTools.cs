@@ -321,5 +321,5 @@ public abstract class UiTestBase : IDisposable
     }
 
     private static string Error(string message) =>
-        throw new McpException(message);
+        throw ToolError.Fail(message);
 }

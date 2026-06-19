@@ -414,5 +414,5 @@ public sealed class WaitTools
         JsonSerializer.Serialize(new { result }, JsonOptions.Default);
 
     private static string Error(string message) =>
-        throw new McpException(message);
+        throw ToolError.Fail(message);
 }

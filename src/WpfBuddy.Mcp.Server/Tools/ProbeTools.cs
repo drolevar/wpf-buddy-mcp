@@ -66,7 +66,7 @@ public sealed class ProbeTools
                     connected = await _probe.ConnectAsync(pipes[0]);
                     return JsonSerializer.Serialize(new { connected, pipeName = _probe.PipeName, autoDiscovered = true }, JsonOptions.Default);
                 }
-                throw new McpException(pipes.Count == 0
+                throw ToolError.Fail(pipes.Count == 0
                     ? "No session attached and no probe pipes found. Attach to an app (wpf_attach) or pass an explicit pipeName."
                     : "No session attached and multiple probe pipes found. Pass an explicit pipeName.");
             }
