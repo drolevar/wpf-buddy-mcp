@@ -16,6 +16,9 @@ public sealed class SessionManager : IDisposable
     private string _sessionId = string.Empty;
     private DateTime? _attachedAtUtc;
 
+    /// <summary>Raised after any attach/detach/launch so transient singletons can reset stale per-session state.</summary>
+    public event Action? SessionChanged;
+
     public bool IsAttached { get { lock (_lock) return _application is not null && _automation is not null; } }
     public string SessionId { get { lock (_lock) return _sessionId; } }
     public Application? Application { get { lock (_lock) return _application; } }
@@ -66,6 +69,7 @@ public sealed class SessionManager : IDisposable
             _attachedAtUtc = DateTime.UtcNow;
             _activeWindow = null;
         }
+        SessionChanged?.Invoke();
     }
 
     public void AttachByName(string processName)
@@ -81,10 +85,13 @@ public sealed class SessionManager : IDisposable
             _attachedAtUtc = DateTime.UtcNow;
             _activeWindow = null;
         }
+        SessionChanged?.Invoke();
     }
 
     public void Launch(string executablePath, string? arguments = null, string? workingDirectory = null)
     {
+        if (string.IsNullOrWhiteSpace(executablePath) || !File.Exists(executablePath))
+            throw new FileNotFoundException($"Executable not found: '{executablePath}'.");
         lock (_lock)
         {
             DetachInternal();
@@ -99,11 +106,13 @@ public sealed class SessionManager : IDisposable
             _attachedAtUtc = DateTime.UtcNow;
             _activeWindow = null;
         }
+        SessionChanged?.Invoke();
     }
 
     public void Detach()
     {
         lock (_lock) DetachInternal();
+        SessionChanged?.Invoke();
     }
 
     private void DetachInternal()
@@ -111,6 +120,9 @@ public sealed class SessionManager : IDisposable
         _activeWindow = null;
         _automation?.Dispose();
         _automation = null;
+        // Dispose releases the FlaUI process handle (it does NOT close/kill the attached app —
+        // Close/Kill are separate methods); prevents a process-handle leak across sessions.
+        try { _application?.Dispose(); } catch { }
         _application = null;
         _sessionId = string.Empty;
         _attachedAtUtc = null;

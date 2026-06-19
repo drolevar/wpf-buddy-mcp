@@ -15,6 +15,7 @@ public sealed class DevWatcherService
     private readonly UiaAdapter _uia;
     private readonly ProbeClient _probe;
 
+    private readonly object _lock = new();
     private List<UiElement>? _previousSnapshot;
     private DateTime _lastCheck = DateTime.MinValue;
 
@@ -23,6 +24,11 @@ public sealed class DevWatcherService
         _session = session;
         _uia = uia;
         _probe = probe;
+        // Drop the previous-snapshot baseline when the session changes.
+        _session.SessionChanged += () =>
+        {
+            lock (_lock) { _previousSnapshot = null; _lastCheck = DateTime.MinValue; }
+        };
     }
 
     public async Task<DevWatchReport> CheckAsync()
@@ -112,9 +118,11 @@ public sealed class DevWatcherService
         }
 
         // Check for new elements since last snapshot (dev-time feedback)
-        if (_previousSnapshot is not null)
+        List<UiElement>? previous;
+        lock (_lock) { previous = _previousSnapshot; }
+        if (previous is not null)
         {
-            var previousIds = new HashSet<string>(_previousSnapshot
+            var previousIds = new HashSet<string>(previous
                 .Where(e => !string.IsNullOrEmpty(e.AutomationId))
                 .Select(e => e.AutomationId!));
 
@@ -134,7 +142,7 @@ public sealed class DevWatcherService
                 });
             }
 
-            var removedIds = _previousSnapshot
+            var removedIds = previous
                 .Where(e => !string.IsNullOrEmpty(e.AutomationId))
                 .Select(e => e.AutomationId!)
                 .Except(currentElements.Where(e => !string.IsNullOrEmpty(e.AutomationId)).Select(e => e.AutomationId!))
@@ -180,8 +188,7 @@ public sealed class DevWatcherService
             HealthScore = CalculateHealthScore(currentElements, report.Issues)
         };
 
-        _previousSnapshot = currentElements;
-        _lastCheck = DateTime.UtcNow;
+        lock (_lock) { _previousSnapshot = currentElements; _lastCheck = DateTime.UtcNow; }
 
         return report;
     }

@@ -4,6 +4,7 @@ namespace WpfBuddy.Mcp.Server.Services;
 
 public sealed class AuditLog
 {
+    private const int MaxEntries = 5000;
     private readonly List<AuditEntry> _entries = [];
     private readonly object _lock = new();
 
@@ -20,6 +21,9 @@ public sealed class AuditLog
                 Result = result,
                 Error = error
             });
+            // Bound growth for long-lived server processes.
+            if (_entries.Count > MaxEntries)
+                _entries.RemoveRange(0, _entries.Count - MaxEntries);
         }
     }
 

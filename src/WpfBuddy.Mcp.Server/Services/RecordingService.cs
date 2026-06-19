@@ -17,6 +17,18 @@ public sealed class RecordingService
     public RecordingService(SessionManager session)
     {
         _session = session;
+        // Don't carry an active recording across an attach/detach/launch.
+        _session.SessionChanged += OnSessionChanged;
+    }
+
+    private void OnSessionChanged()
+    {
+        lock (_lock)
+        {
+            _isRecording = false;
+            _isPaused = false;
+            _activeRecording = null;
+        }
     }
 
     public void Start(string name)
@@ -107,7 +119,7 @@ public sealed class RecordingService
         sb.AppendLine("    {");
         if (!string.IsNullOrEmpty(recording.App?.Process))
         {
-            sb.AppendLine($"        _app = Application.AttachOrLaunch(new System.Diagnostics.ProcessStartInfo(\"{recording.App.Process}\"));");
+            sb.AppendLine($"        _app = Application.AttachOrLaunch(new System.Diagnostics.ProcessStartInfo(\"{CodeGen.Escape(recording.App.Process)}\"));");
         }
         sb.AppendLine("        _automation = new UIA3Automation();");
         sb.AppendLine("        _window = _app.GetMainWindow(_automation);");
@@ -127,7 +139,7 @@ public sealed class RecordingService
                 switch (step.Action)
                 {
                     case "set_value":
-                        sb.AppendLine($"        {selectorCode}.Patterns.Value.Pattern.SetValue(\"{step.Value}\");");
+                        sb.AppendLine($"        {selectorCode}.Patterns.Value.Pattern.SetValue(\"{CodeGen.Escape(step.Value)}\");");
                         break;
                     case "invoke":
                         sb.AppendLine($"        {selectorCode}.Patterns.Invoke.Pattern.Invoke();");
@@ -167,7 +179,7 @@ public sealed class RecordingService
                         sb.AppendLine($"        Assert.True({selectorCode}.IsEnabled);");
                         break;
                     case "text":
-                        sb.AppendLine($"        Assert.Equal(\"{step.Value}\", {selectorCode}.Properties.Name.ValueOrDefault);");
+                        sb.AppendLine($"        Assert.Equal(\"{CodeGen.Escape(step.Value)}\", {selectorCode}.Properties.Name.ValueOrDefault);");
                         break;
                     default:
                         sb.AppendLine($"        // TODO: Implement assertion '{step.Assert}'");
@@ -194,11 +206,11 @@ public sealed class RecordingService
 
         if (!string.IsNullOrEmpty(selector.AutomationId))
         {
-            return $"_window.FindFirstDescendant(cf => cf.ByAutomationId(\"{selector.AutomationId}\"))";
+            return $"_window.FindFirstDescendant(cf => cf.ByAutomationId(\"{CodeGen.Escape(selector.AutomationId)}\"))";
         }
         if (!string.IsNullOrEmpty(selector.Name))
         {
-            return $"_window.FindFirstDescendant(cf => cf.ByName(\"{selector.Name}\"))";
+            return $"_window.FindFirstDescendant(cf => cf.ByName(\"{CodeGen.Escape(selector.Name)}\"))";
         }
         return "_window";
     }

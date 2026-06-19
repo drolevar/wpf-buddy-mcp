@@ -23,12 +23,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_invoke", Destructive = false), Description("Invoke Button, MenuItem, Hyperlink through UIA InvokePattern.")]
-    public string Invoke([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string Invoke([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_invoke", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -41,12 +41,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_click", Destructive = false), Description("Click element using pattern if available, coordinates as fallback.")]
-    public string Click([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string Click([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_click", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -64,12 +64,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_set_value", Destructive = true, Idempotent = true), Description("Set text/value via ValuePattern.")]
-    public string SetValue([Description("New value to write into the element via ValuePattern; overwrites existing content.")] string value, [Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string SetValue([Description("New value to write into the element via ValuePattern; overwrites existing content.")] string value, [Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_set_value", criteria, new() { ["value"] = "***" });
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -82,12 +82,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_clear_value", Destructive = true, Idempotent = true), Description("Clear text/value from element.")]
-    public string ClearValue([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string ClearValue([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_clear_value", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -101,14 +101,14 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_type_text", Destructive = true), Description("Type text into focused or selected element via keyboard input.")]
-    public string TypeText([Description("Text to type via simulated keyboard input at the current caret/focus.")] string text, [Description("AutomationId of the element to focus before typing; if omitted, types into the currently focused element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string TypeText([Description("Text to type via simulated keyboard input at the current caret/focus.")] string text, [Description("AutomationId of the element to focus before typing; if omitted, types into the currently focused element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_type_text", criteria, new() { ["text"] = "***" });
 
         if (!string.IsNullOrEmpty(automationId) || !string.IsNullOrEmpty(name))
         {
-            var element = _uia.FindElement(criteria);
+            var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
             if (element is null)
                 return Error("Element not found.");
             element.Focus();
@@ -173,12 +173,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_focus", Destructive = false, Idempotent = true), Description("Move focus to element.")]
-    public string Focus([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string Focus([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_focus", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -187,12 +187,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_select", Destructive = false, Idempotent = true), Description("Select list/grid/tree/combo item by automation id or name.")]
-    public string Select([Description("AutomationId of the target item to select.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string Select([Description("AutomationId of the target item to select.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_select", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -234,12 +234,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_toggle", Destructive = false), Description("Toggle checkbox, toggle button, or expander.")]
-    public string Toggle([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string Toggle([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_toggle", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -252,12 +252,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_check", Destructive = false, Idempotent = true), Description("Ensure checkbox is checked.")]
-    public string Check([Description("AutomationId of the target checkbox.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string Check([Description("AutomationId of the target checkbox.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_check", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -277,12 +277,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_uncheck", Destructive = false, Idempotent = true), Description("Ensure checkbox is unchecked.")]
-    public string Uncheck([Description("AutomationId of the target checkbox.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string Uncheck([Description("AutomationId of the target checkbox.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_uncheck", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -302,12 +302,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_expand", Destructive = false, Idempotent = true), Description("Expand combo/tree/expander/menu.")]
-    public string Expand([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string Expand([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_expand", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -320,12 +320,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_collapse", Destructive = false, Idempotent = true), Description("Collapse combo/tree/expander/menu.")]
-    public string Collapse([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string Collapse([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_collapse", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -338,12 +338,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_scroll_into_view", Destructive = false, Idempotent = true), Description("Scroll element into view.")]
-    public string ScrollIntoView([Description("AutomationId of the target element to bring into view.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string ScrollIntoView([Description("AutomationId of the target element to bring into view.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_scroll_into_view", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -357,12 +357,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_double_click", Destructive = false), Description("Double-click element.")]
-    public string DoubleClick([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string DoubleClick([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_double_click", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -372,12 +372,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_right_click", Destructive = false), Description("Right-click element to open context menu.")]
-    public string RightClick([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string RightClick([Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_right_click", criteria);
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -418,12 +418,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_scroll", Destructive = false), Description("Scroll container by direction and amount.")]
-    public string Scroll([Description("Scroll direction; one of: up, down, left, right.")] string direction, [Description("Scroll amount as a multiplier; defaults to 1.0 (one small increment).")] double amount = 1.0, [Description("AutomationId of the scrollable container.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string Scroll([Description("Scroll direction; one of: up, down, left, right.")] string direction, [Description("Scroll amount as a multiplier; defaults to 1.0 (one small increment).")] double amount = 1.0, [Description("AutomationId of the scrollable container.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_scroll", criteria, new() { ["direction"] = direction, ["amount"] = amount });
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -489,12 +489,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_open_context_menu_item", Destructive = false), Description("Right-click target and invoke context menu item.")]
-    public string OpenContextMenuItem([Description("Visible Name of the context-menu item to invoke after right-clicking the target.")] string menuItemName, [Description("AutomationId of the element to right-click.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string OpenContextMenuItem([Description("Visible Name of the context-menu item to invoke after right-clicking the target.")] string menuItemName, [Description("AutomationId of the element to right-click.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_open_context_menu_item", criteria, new() { ["menuItem"] = menuItemName });
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -544,12 +544,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_set_slider", Destructive = true, Idempotent = true), Description("Set Slider/RangeBase value.")]
-    public string SetSlider([Description("Target value to set on the Slider/RangeBase via RangeValuePattern; must fall within the control's min/max range.")] double value, [Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string SetSlider([Description("Target value to set on the Slider/RangeBase via RangeValuePattern; must fall within the control's min/max range.")] double value, [Description("AutomationId of the target element.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_set_slider", criteria, new() { ["value"] = value });
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -561,12 +561,12 @@ public sealed class ActionTools
     }
 
     [McpServerTool(Name = "wpf_set_date", Destructive = true, Idempotent = true), Description("Set DatePicker/Calendar date by typing text value.")]
-    public string SetDate([Description("Date value as text, formatted per the control's expected culture/format (e.g. 'MM/dd/yyyy' or '2026-06-17'); set via ValuePattern or typed.")] string date, [Description("AutomationId of the target DatePicker/Calendar.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
+    public string SetDate([Description("Date value as text, formatted per the control's expected culture/format (e.g. 'MM/dd/yyyy' or '2026-06-17'); set via ValuePattern or typed.")] string date, [Description("AutomationId of the target DatePicker/Calendar.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null, [Description("AutomationId of a parent/container element to scope the search to; optional.")] string? parentAutomationId = null, [Description("Name of a parent/container element to scope the search to; used when parentAutomationId is omitted.")] string? parentName = null, [Description("If > 0, wait up to this many milliseconds for the element to appear before failing. Default 0 (fail immediately if absent).")] int waitMs = 0)
     {
         var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
         _audit.Record("wpf_set_date", criteria, new() { ["date"] = date });
 
-        var element = _uia.FindElement(criteria);
+        var element = Resolve(criteria, parentAutomationId, parentName, waitMs);
         if (element is null)
             return Error("Element not found.");
 
@@ -627,6 +627,16 @@ public sealed class ActionTools
         }
 
         return Error("No cancel/close button found in current window.");
+    }
+
+    // Resolves a target element, optionally scoped to a parent/container and optionally
+    // waiting up to waitMs for it to appear (0 = fail immediately if absent).
+    private FlaUI.Core.AutomationElements.AutomationElement? Resolve(ElementCriteria criteria, string? parentAutomationId, string? parentName, int waitMs)
+    {
+        FlaUI.Core.AutomationElements.AutomationElement? root = null;
+        if (!string.IsNullOrEmpty(parentAutomationId) || !string.IsNullOrEmpty(parentName))
+            root = _uia.FindElement(new ElementCriteria { AutomationId = parentAutomationId, Name = parentName });
+        return _uia.FindElement(criteria, root, waitMs);
     }
 
     private void RecordAction(string action, ElementCriteria? selector, string? value = null)

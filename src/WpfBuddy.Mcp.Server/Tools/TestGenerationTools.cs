@@ -54,7 +54,7 @@ public sealed class TestGenerationTools
         {
             var propName = SanitizeName(el.AutomationId!);
             var returnType = GetElementType(el.ControlType);
-            sb.AppendLine($"    public {returnType} {propName} => _window.FindFirstDescendant(cf => cf.ByAutomationId(\"{el.AutomationId}\")).As<{returnType}>();");
+            sb.AppendLine($"    public {returnType} {propName} => _window.FindFirstDescendant(cf => cf.ByAutomationId(\"{CodeGen.Escape(el.AutomationId)}\")).As<{returnType}>();");
         }
 
         sb.AppendLine("}");
@@ -76,7 +76,7 @@ public sealed class TestGenerationTools
         foreach (var el in withIds)
         {
             var constName = SanitizeName(el.AutomationId!).ToUpperInvariant();
-            sb.AppendLine($"    public const string {constName} = \"{el.AutomationId}\";");
+            sb.AppendLine($"    public const string {constName} = \"{CodeGen.Escape(el.AutomationId)}\";");
         }
 
         sb.AppendLine("}");
@@ -100,7 +100,7 @@ public sealed class TestGenerationTools
             var methodName = $"Assert{SanitizeName(el.AutomationId!)}";
             sb.AppendLine($"    public static void {methodName}Exists(Window window)");
             sb.AppendLine("    {");
-            sb.AppendLine($"        var element = window.FindFirstDescendant(cf => cf.ByAutomationId(\"{el.AutomationId}\"));");
+            sb.AppendLine($"        var element = window.FindFirstDescendant(cf => cf.ByAutomationId(\"{CodeGen.Escape(el.AutomationId)}\"));");
             sb.AppendLine("        Assert.NotNull(element);");
             sb.AppendLine("    }");
             sb.AppendLine();
@@ -183,7 +183,7 @@ public abstract class UiTestBase : IDisposable
         sb.AppendLine();
         sb.AppendLine("public class SmokeTests : UiTestBase");
         sb.AppendLine("{");
-        sb.AppendLine($"    public SmokeTests() : base(\"{_session.GetStatus().ProcessName}\") {{ }}");
+        sb.AppendLine($"    public SmokeTests() : base(\"{CodeGen.Escape(_session.GetStatus().ProcessName)}\") {{ }}");
         sb.AppendLine();
         sb.AppendLine("    [Fact]");
         sb.AppendLine("    public void AllKeyElementsExist()");
@@ -191,7 +191,7 @@ public abstract class UiTestBase : IDisposable
 
         foreach (var el in actionable.Take(20))
         {
-            sb.AppendLine($"        Assert.NotNull(MainWindow.FindFirstDescendant(cf => cf.ByAutomationId(\"{el.AutomationId}\")));");
+            sb.AppendLine($"        Assert.NotNull(MainWindow.FindFirstDescendant(cf => cf.ByAutomationId(\"{CodeGen.Escape(el.AutomationId)}\")));");
         }
 
         sb.AppendLine("    }");
@@ -202,7 +202,7 @@ public abstract class UiTestBase : IDisposable
 
         foreach (var el in actionable.Where(e => e.IsEnabled).Take(10))
         {
-            sb.AppendLine($"        Assert.True(MainWindow.FindFirstDescendant(cf => cf.ByAutomationId(\"{el.AutomationId}\")).IsEnabled);");
+            sb.AppendLine($"        Assert.True(MainWindow.FindFirstDescendant(cf => cf.ByAutomationId(\"{CodeGen.Escape(el.AutomationId)}\")).IsEnabled);");
         }
 
         sb.AppendLine("    }");
@@ -226,7 +226,7 @@ public abstract class UiTestBase : IDisposable
         sb.AppendLine();
         sb.AppendLine("public class AccessibilityTests : UiTestBase");
         sb.AppendLine("{");
-        sb.AppendLine($"    public AccessibilityTests() : base(\"{_session.GetStatus().ProcessName}\") {{ }}");
+        sb.AppendLine($"    public AccessibilityTests() : base(\"{CodeGen.Escape(_session.GetStatus().ProcessName)}\") {{ }}");
         sb.AppendLine();
         sb.AppendLine("    [Fact]");
         sb.AppendLine("    public void AllButtonsHaveNames()");
