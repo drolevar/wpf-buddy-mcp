@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Services;
 
@@ -11,12 +12,14 @@ public sealed class ProbeTools
     private readonly ProbeClient _probe;
     private readonly SessionManager _session;
     private readonly AuditLog _audit;
+    private readonly ILogger<ProbeTools> _logger;
 
-    public ProbeTools(ProbeClient probe, SessionManager session, AuditLog audit)
+    public ProbeTools(ProbeClient probe, SessionManager session, AuditLog audit, ILogger<ProbeTools> logger)
     {
         _probe = probe;
         _session = session;
         _audit = audit;
+        _logger = logger;
     }
 
     [McpServerTool(Name = "wpf_probe_status"), Description("Check if probe is connected and responding.")]
@@ -42,16 +45,23 @@ public sealed class ProbeTools
         bool connected;
         if (!string.IsNullOrEmpty(pipeName))
         {
+            _logger.LogInformation("wpf_probe_connect: connecting by explicit pipe name '{PipeName}'", pipeName);
             connected = await _probe.ConnectAsync(pipeName);
         }
         else
         {
-            var status = _session.GetStatus();
-            if (!status.ProcessId.HasValue || status.ProcessId == 0)
+            // Read the PID directly (a cached int) instead of GetStatus(), which would
+            // trigger blocking UI-Automation calls (ActiveWindow.Title etc.) and can hang.
+            _logger.LogInformation("wpf_probe_connect: no pipe name given, resolving attached process id");
+            var pid = _session.Application?.ProcessId;
+            _logger.LogInformation("wpf_probe_connect: resolved process id = {Pid}", pid);
+            if (pid is null or 0)
                 return JsonSerializer.Serialize(new { error = "No session attached. Attach to an app first." }, JsonOptions.Default);
-            connected = await _probe.ConnectAsync(status.ProcessId.Value);
+            _logger.LogInformation("wpf_probe_connect: connecting to probe for pid {Pid}", pid);
+            connected = await _probe.ConnectAsync(pid.Value);
         }
 
+        _logger.LogInformation("wpf_probe_connect: connected={Connected} pipe='{PipeName}'", connected, _probe.PipeName);
         return JsonSerializer.Serialize(new { connected, pipeName = _probe.PipeName }, JsonOptions.Default);
     }
 

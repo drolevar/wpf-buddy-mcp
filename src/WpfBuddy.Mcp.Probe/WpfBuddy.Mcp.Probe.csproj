@@ -1,16 +1,28 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <!-- Multi-target so the probe can be embedded in BOTH .NET Framework WPF host apps
+         (net48) and modern .NET WPF host apps (net8.0-windows). netstandard2.0 is NOT an
+         option because the probe depends on WPF (System.Windows.*), which is not part of
+         netstandard. This project is Windows-only by nature (WPF). -->
+    <TargetFrameworks>net48;net8.0-windows</TargetFrameworks>
     <UseWPF>true</UseWPF>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PackageId>WpfBuddy.Mcp.Probe</PackageId>
     <Version>0.1.0</Version>
     <Description>In-process probe for WPF apps enabling deep diagnostics, binding inspection, and ViewModel access via named pipe IPC.</Description>
+    <LangVersion>14</LangVersion>
   </PropertyGroup>
 
-  <ItemGroup>
+  <!-- net48 needs the BCL polyfills (newer APIs / C# language features) and the
+       out-of-band System.Text.Json. net8.0-windows ships both in-box, so scope these
+       packages to the .NET Framework target only. -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="PolySharp" Version="1.16.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
   </ItemGroup>
 

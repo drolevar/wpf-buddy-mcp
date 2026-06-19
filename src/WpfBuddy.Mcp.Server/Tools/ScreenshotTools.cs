@@ -3,6 +3,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
@@ -23,30 +24,35 @@ public sealed class ScreenshotTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_screenshot"), Description("Capture current window/app screenshot. Returns base64 PNG.")]
-    public string Screenshot()
+    // Return a PNG as an MCP image content block (base64 in `data` + image/png mime) so the
+    // model can actually view it. Returning a JSON string would be delivered as TEXT.
+    private static CallToolResponse ImageResult(byte[] png) => new()
+    {
+        Content = new List<Content> { new() { Type = "image", Data = Convert.ToBase64String(png), MimeType = "image/png" } }
+    };
+
+    private static CallToolResponse ErrorResult(string message) => new()
+    {
+        IsError = true,
+        Content = new List<Content> { new() { Type = "text", Text = message } }
+    };
+
+    [McpServerTool(Name = "wpf_screenshot"), Description("Capture the attached window as a PNG image the model can view.")]
+    public CallToolResponse Screenshot()
     {
         _audit.Record("wpf_screenshot");
         try
         {
-            var bytes = _screenshots.CaptureWindow();
-            var base64 = Convert.ToBase64String(bytes);
-            return JsonSerializer.Serialize(new
-            {
-                format = "png",
-                encoding = "base64",
-                data = base64,
-                sizeBytes = bytes.Length
-            }, JsonOptions.Default);
+            return ImageResult(_screenshots.CaptureWindow());
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            return ErrorResult(ex.Message);
         }
     }
 
-    [McpServerTool(Name = "wpf_screenshot_element"), Description("Capture screenshot of selected element. Returns base64 PNG.")]
-    public string ScreenshotElement(string? automationId = null, string? name = null)
+    [McpServerTool(Name = "wpf_screenshot_element"), Description("Capture the selected element as a PNG image the model can view.")]
+    public CallToolResponse ScreenshotElement(string? automationId = null, string? name = null)
     {
         _audit.Record("wpf_screenshot_element");
         try
@@ -54,63 +60,56 @@ public sealed class ScreenshotTools
             var criteria = new ElementCriteria { AutomationId = automationId, Name = name };
             var element = _uia.FindElement(criteria);
             if (element is null)
-                return JsonSerializer.Serialize(new { error = "Element not found." }, JsonOptions.Default);
+                return ErrorResult("Element not found.");
 
-            var bytes = _screenshots.CaptureElement(element);
-            var base64 = Convert.ToBase64String(bytes);
-            return JsonSerializer.Serialize(new
-            {
-                format = "png",
-                encoding = "base64",
-                data = base64,
-                sizeBytes = bytes.Length
-            }, JsonOptions.Default);
+            return ImageResult(_screenshots.CaptureElement(element));
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            return ErrorResult(ex.Message);
         }
     }
 
-    [McpServerTool(Name = "wpf_capture_failure_artifacts"), Description("Capture screenshot, snapshot, and diagnostics after a failure.")]
-    public string CaptureFailureArtifacts(string? failureDescription = null)
+    [McpServerTool(Name = "wpf_capture_failure_artifacts"), Description("Capture screenshot, snapshot, and diagnostics after a failure. Returns a text block of metadata plus the screenshot as a viewable image.")]
+    public CallToolResponse CaptureFailureArtifacts(string? failureDescription = null)
     {
         _audit.Record("wpf_capture_failure_artifacts");
         try
         {
-            string? screenshotBase64 = null;
-            try
-            {
-                var bytes = _screenshots.CaptureWindow();
-                screenshotBase64 = Convert.ToBase64String(bytes);
-            }
+            byte[]? screenshot = null;
+            try { screenshot = _screenshots.CaptureWindow(); }
             catch { }
 
             UiSnapshot? snapshot = null;
-            try
-            {
-                snapshot = _uia.CaptureSnapshot(maxDepth: 4);
-            }
+            try { snapshot = _uia.CaptureSnapshot(maxDepth: 4); }
             catch { }
 
-            var artifacts = new
+            var metadata = new
             {
                 capturedAtUtc = DateTime.UtcNow,
                 failureDescription,
-                screenshot = screenshotBase64 is not null ? new { format = "png", encoding = "base64", data = screenshotBase64 } : null,
+                screenshotIncluded = screenshot is not null,
                 uiSnapshot = snapshot,
             };
 
-            return JsonSerializer.Serialize(artifacts, JsonOptions.Default);
+            // Mixed content: metadata as text + the screenshot as a viewable image block.
+            var content = new List<Content>
+            {
+                new() { Type = "text", Text = JsonSerializer.Serialize(metadata, JsonOptions.Default) }
+            };
+            if (screenshot is not null)
+                content.Add(new Content { Type = "image", Data = Convert.ToBase64String(screenshot), MimeType = "image/png" });
+
+            return new CallToolResponse { Content = content };
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            return ErrorResult(ex.Message);
         }
     }
 
-    [McpServerTool(Name = "wpf_annotate_screenshot"), Description("Capture screenshot with overlay annotations highlighting specific elements.")]
-    public string AnnotateScreenshot(string[] automationIds)
+    [McpServerTool(Name = "wpf_annotate_screenshot"), Description("Capture the window with overlay boxes highlighting the given elements. Returns the annotated PNG as a viewable image.")]
+    public CallToolResponse AnnotateScreenshot(string[] automationIds)
     {
         _audit.Record("wpf_annotate_screenshot");
         try
@@ -123,6 +122,7 @@ public sealed class ScreenshotTools
             using var font = new Font("Arial", 10, FontStyle.Bold);
             using var brush = new SolidBrush(Color.Red);
 
+            var windowBounds = _screenshots.GetWindowBounds();   // resolve once, not per element
             int index = 0;
             foreach (var id in automationIds)
             {
@@ -130,7 +130,6 @@ public sealed class ScreenshotTools
                 if (element is not null)
                 {
                     var rect = element.BoundingRectangle;
-                    var windowBounds = _screenshots.GetWindowBounds();
                     var relRect = new Rectangle(
                         rect.X - windowBounds.X, rect.Y - windowBounds.Y,
                         rect.Width, rect.Height);
@@ -142,12 +141,11 @@ public sealed class ScreenshotTools
 
             using var output = new MemoryStream();
             bitmap.Save(output, ImageFormat.Png);
-            var base64 = Convert.ToBase64String(output.ToArray());
-            return JsonSerializer.Serialize(new { format = "png", encoding = "base64", annotatedElements = automationIds.Length, data = base64 }, JsonOptions.Default);
+            return ImageResult(output.ToArray());
         }
         catch (Exception ex)
         {
-            return JsonSerializer.Serialize(new { error = ex.Message }, JsonOptions.Default);
+            return ErrorResult(ex.Message);
         }
     }
 

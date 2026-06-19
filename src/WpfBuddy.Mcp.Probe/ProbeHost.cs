@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
 using System.Text;
@@ -14,6 +15,12 @@ namespace WpfBuddy.Mcp.Probe;
 /// </summary>
 public sealed class ProbeHost : IDisposable
 {
+    // UTF-8 WITHOUT a BOM. With a BOM, StreamWriter.AutoFlush=true flushes the
+    // preamble in its setter, calling the pipe's FlushFileBuffers, which blocks
+    // until the peer reads those bytes. Since both ends construct their writer the
+    // same way before reading, that mutually deadlocks ("connected, then nothing").
+    private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
     private readonly string _pipeName;
     private CancellationTokenSource? _cts;
     private Task? _listenTask;
@@ -34,7 +41,10 @@ public sealed class ProbeHost : IDisposable
     /// </summary>
     public static ProbeHost Start(string? pipeName = null)
     {
-        pipeName ??= $"wpfbuddy-mcp-probe-{Environment.ProcessId}";
+        pipeName ??= $"wpfbuddy-mcp-probe-{System.Diagnostics.Process.GetCurrentProcess().Id}";
+
+        Debug.WriteLine($"Starting ProbeHost with pipe name: {pipeName}");
+
         var host = new ProbeHost(pipeName);
         host.StartListening();
         _instance = host;
@@ -55,16 +65,23 @@ public sealed class ProbeHost : IDisposable
             {
                 using var pipe = new NamedPipeServerStream(_pipeName, PipeDirection.InOut, 2, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
                 await pipe.WaitForConnectionAsync(ct);
+                
+                Debug.WriteLine($"Pipe connected: {_pipeName}");
 
-                using var reader = new StreamReader(pipe, Encoding.UTF8);
-                using var writer = new StreamWriter(pipe, Encoding.UTF8) { AutoFlush = true };
+                using var reader = new StreamReader(pipe, Utf8NoBom);
+                using var writer = new StreamWriter(pipe, Utf8NoBom) { AutoFlush = true };
 
                 while (pipe.IsConnected && !ct.IsCancellationRequested)
                 {
-                    var line = await reader.ReadLineAsync(ct);
+                    var line = await reader.ReadLineAsync();
                     if (line is null) break;
 
+                    Debug.WriteLine($"Received request: {line}");
+
                     var response = await ProcessRequest(line);
+                    
+                    Debug.WriteLine($"Sending response: {response}");
+                    
                     await writer.WriteLineAsync(response);
                 }
             }
@@ -80,11 +97,13 @@ public sealed class ProbeHost : IDisposable
         }
     }
 
+    private static readonly JsonSerializerOptions RequestOptions = new() { PropertyNameCaseInsensitive = true };
+
     private async Task<string> ProcessRequest(string requestJson)
     {
         try
         {
-            var request = JsonSerializer.Deserialize<ProbeRequest>(requestJson);
+            var request = JsonSerializer.Deserialize<ProbeRequest>(requestJson, RequestOptions);
             if (request is null)
                 return JsonSerializer.Serialize(new ProbeResponse { Error = "Invalid request" });
 
@@ -329,6 +348,36 @@ public sealed class ProbeHost : IDisposable
         _listenTask?.Wait(TimeSpan.FromSeconds(2));
         _cts?.Dispose();
         _instance = null;
+    }
+}
+
+internal static class DictionaryExtensions
+{
+    public static TValue? GetValueOrDefault<TKey, TValue>(this Dictionary<TKey, TValue> dictionary, TKey key)
+        where TKey : notnull
+        => dictionary.TryGetValue(key, out var value) ? value : default;
+}
+
+internal static class StreamReaderExtensions
+{
+    /// <summary>
+    /// net48 polyfill for StreamReader.ReadLineAsync(CancellationToken) (added in .NET 7).
+    /// The underlying read is not cancelable, so when the token fires this stops awaiting
+    /// and throws OperationCanceledException; the in-flight read completes in the background.
+    /// </summary>
+    public static async Task<string?> ReadLineAsync(this StreamReader reader, CancellationToken ct)
+    {
+        var readTask = reader.ReadLineAsync();
+        if (!ct.CanBeCanceled)
+            return await readTask;
+
+        var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using (ct.Register(static s => ((TaskCompletionSource<bool>)s!).TrySetResult(true), tcs))
+        {
+            if (await Task.WhenAny(readTask, tcs.Task) != readTask)
+                ct.ThrowIfCancellationRequested();
+        }
+        return await readTask;
     }
 }
 

@@ -7,9 +7,17 @@ using WpfBuddy.Mcp.Server.Tools;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// Redirect logging to stderr so stdout is reserved for JSON-RPC messages
+// A stdio MCP server must keep stdout JSON-only. Route all logging to stderr,
+// and suppress the host lifetime status messages ("Application started.
+// Press Ctrl+C to shut down.", "Hosting environment...", "Content root...")
+// which otherwise leak to the console and garble the protocol.
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole(options => options.LogToStandardErrorThreshold = LogLevel.Trace);
+builder.Services.Configure<ConsoleLifetimeOptions>(options => options.SuppressStatusMessages = true);
+
+// Tee all ILogger output to a file (default: %TEMP%\wpfbuddy-mcp-server.log,
+// override with WPFBUDDY_SERVER_LOG) so the general server logs are persisted.
+builder.Logging.AddProvider(new FileLoggerProvider(FileLoggerProvider.ResolveLogPath()));
 
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<AuditLog>();

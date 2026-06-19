@@ -1,2 +1,6 @@
 bin/
 obj/
+
+# Claude-generated development/investigation artifacts — not for commit
+.repro/
+docs/code-review-2026-06.md

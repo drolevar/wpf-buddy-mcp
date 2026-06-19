@@ -4,9 +4,7 @@
       "type": "stdio",
       "command": "dotnet",
       "args": [
-        "run",
-        "--project",
-        "${workspaceFolder}/src/WpfBuddy.Mcp.Server/WpfBuddy.Mcp.Server.csproj"
+        "${workspaceFolder}/src/WpfBuddy.Mcp.Server/bin/Debug/net8.0-windows/WpfBuddy.Mcp.Server.dll"
       ]
     }
   }
