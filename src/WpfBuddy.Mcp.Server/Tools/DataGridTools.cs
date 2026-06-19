@@ -206,14 +206,29 @@ public sealed class DataGridTools
 
         try
         {
-            if (rowIndex.HasValue && grid.Patterns.Grid.IsSupported)
+            if (rowIndex.HasValue)
             {
+                // R2-3: a rowIndex with no Grid pattern previously fell through to the generic
+                // "provide rowIndex or cellText" error; report the real reason instead.
+                if (!grid.Patterns.Grid.IsSupported)
+                    return Error("Row selection by index requires the Grid pattern, which this element does not support. Provide cellText to match a row by content instead.");
+
+                var rowCount = grid.Patterns.Grid.Pattern.RowCount.ValueOrDefault;
+                if (rowIndex.Value < 0 || rowIndex.Value >= rowCount)
+                    return Error($"Row index {rowIndex.Value} out of range (rowCount={rowCount}).");
+
                 var cell = grid.Patterns.Grid.Pattern.GetItem(rowIndex.Value, 0);
-                if (cell.Patterns.SelectionItem.IsSupported)
+                // R2-3: select the row, not just the column-0 cell. Prefer the containing
+                // DataItem/ListItem row element so the whole row is selected even in cell-selection grids.
+                var rowElement = FindRowContainer(cell);
+                var target = rowElement ?? cell;
+                if (target.Patterns.SelectionItem.IsSupported)
+                    target.Patterns.SelectionItem.Pattern.Select();
+                else if (cell.Patterns.SelectionItem.IsSupported)
                     cell.Patterns.SelectionItem.Pattern.Select();
                 else
-                    cell.Click();
-                return Ok($"row_{rowIndex}_selected");
+                    target.Click();
+                return Ok($"row_{rowIndex.Value}_selected");
             }
 
             if (!string.IsNullOrEmpty(cellText))
@@ -241,6 +256,25 @@ public sealed class DataGridTools
         {
             return Error(ex.Message);
         }
+    }
+
+    // Walk up from a grid cell to its containing row element (DataGridRow → DataItem, ListView → ListItem)
+    // so a whole row can be selected rather than just the cell. Returns null if no row ancestor is found.
+    private static AutomationElement? FindRowContainer(AutomationElement cell)
+    {
+        try
+        {
+            var current = cell.Parent;
+            for (int i = 0; i < 5 && current is not null; i++)
+            {
+                var ct = current.Properties.ControlType.ValueOrDefault;
+                if (ct == ControlType.DataItem || ct == ControlType.ListItem)
+                    return current;
+                current = current.Parent;
+            }
+        }
+        catch { }
+        return null;
     }
 
     [McpServerTool(Name = "wpf_grid_double_click_row", Destructive = false), Description("Double-click a row by index.")]

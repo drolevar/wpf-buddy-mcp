@@ -37,7 +37,9 @@ public sealed class ExplorerTools
                 {
                     screensDiscovered = result.Screens.Count,
                     transitionsFound = result.Transitions.Count,
-                    stepsTaken = result.StepsTaken
+                    stepsTaken = result.StepsTaken,
+                    aborted = result.Aborted,
+                    abortReason = result.AbortReason
                 },
                 screens = result.Screens.Select(s => new
                 {

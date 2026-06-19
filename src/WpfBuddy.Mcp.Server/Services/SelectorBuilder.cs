@@ -159,38 +159,105 @@ public sealed class SelectorBuilder
         return (elements.Count == 1, elements.Count);
     }
 
-    public List<(ElementSelector selector, string strategy, int stability)> RankSelectors(AutomationElement element)
+    /// <summary>
+    /// The single source of truth for an element's candidate selector strategies (R2-16), shared by
+    /// <see cref="RankSelectors"/> and the wpf_get_selector_candidates tool so they never diverge.
+    /// Base stability reflects strategy robustness only; live uniqueness is folded in by RankSelectors.
+    /// Ordered simplest-sufficient first (R2-15): a bare AutomationId outranks AutomationId+ControlType
+    /// because, when unique, the extra ControlType constraint is redundant and only adds brittleness.
+    /// </summary>
+    public List<SelectorCandidate> GenerateCandidates(AutomationElement element)
     {
-        var results = new List<(ElementSelector selector, string strategy, int stability)>();
         var automationId = element.Properties.AutomationId.ValueOrDefault;
         var name = element.Properties.Name.ValueOrDefault;
         var controlType = element.Properties.ControlType.ValueOrDefault.ToString();
         var className = element.Properties.ClassName.ValueOrDefault;
 
+        // Don't constrain on an unusable ControlType (null/empty/"Unknown") — see R2-17.
+        var hasUsableControlType = !string.IsNullOrEmpty(controlType)
+            && !string.Equals(controlType, "Unknown", StringComparison.OrdinalIgnoreCase);
+
+        var candidates = new List<SelectorCandidate>();
+
         if (!string.IsNullOrEmpty(automationId))
+            candidates.Add(new("AutomationId", new ElementCriteria { AutomationId = automationId }, 98));
+
+        if (!string.IsNullOrEmpty(automationId) && hasUsableControlType)
+            candidates.Add(new("AutomationId+ControlType", new ElementCriteria { AutomationId = automationId, ControlType = controlType }, 95));
+
+        if (!string.IsNullOrEmpty(name) && hasUsableControlType)
+            candidates.Add(new("Name+ControlType", new ElementCriteria { Name = name, ControlType = controlType }, 70));
+
+        if (!string.IsNullOrEmpty(name))
+            candidates.Add(new("Name", new ElementCriteria { Name = name }, 60));
+
+        if (!string.IsNullOrEmpty(className) && hasUsableControlType)
+            candidates.Add(new("ClassName+ControlType", new ElementCriteria { ClassName = className, ControlType = controlType }, 40));
+
+        return candidates;
+    }
+
+    /// <summary>
+    /// Rank candidate selectors for an element. R2-14: each candidate is verified against the live tree
+    /// and its match count folded into the score, so a duplicate AutomationId (matchCount &gt; 1) drops
+    /// below a unique compound selector instead of always ranking 95-98.
+    /// </summary>
+    public List<(ElementSelector selector, string strategy, int stability, int matchCount)> RankSelectors(AutomationElement element)
+    {
+        var ranked = new List<(ElementSelector selector, string strategy, int stability, int matchCount)>();
+
+        foreach (var c in GenerateCandidates(element))
         {
-            var sel = new ElementSelector { Element = new ElementCriteria { AutomationId = automationId } };
-            results.Add((sel, "AutomationId", 95));
+            int matchCount;
+            try
+            {
+                (_, matchCount) = ValidateSelectorUniqueness(c.Criteria);
+            }
+            catch
+            {
+                matchCount = -1; // live tree unavailable — fall back to the base score
+            }
+
+            var score = ComputeStability(c.BaseStability, matchCount);
+            ranked.Add((new ElementSelector { Element = c.Criteria }, c.Strategy, score, matchCount));
         }
 
-        if (!string.IsNullOrEmpty(automationId) && !string.IsNullOrEmpty(controlType))
-        {
-            var sel = new ElementSelector { Element = new ElementCriteria { AutomationId = automationId, ControlType = controlType } };
-            results.Add((sel, "AutomationId+ControlType", 98));
-        }
+        // Highest score first; tie-break toward the simpler selector (fewer constraints) — R2-15.
+        return ranked
+            .OrderByDescending(r => r.stability)
+            .ThenBy(r => ConstraintCount(r.selector.Element))
+            .ToList();
+    }
 
-        if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(controlType))
+    /// <summary>
+    /// Map a candidate's base stability and its live match count to a final ranking score (R2-14).
+    /// Unique (1) keeps its base score; unverifiable (&lt; 0) trusts the base; non-resolving (0) scores 0;
+    /// non-unique (&gt; 1) is forced strictly below EVERY unique selector — including the lowest unique
+    /// base (ClassName+ControlType = 40) — so an ambiguous selector can never outrank a unique one.
+    /// </summary>
+    public static int ComputeStability(int baseStability, int matchCount)
+    {
+        const int nonUniqueCeiling = 39; // strictly below the lowest unique base stability (40)
+        return matchCount switch
         {
-            var sel = new ElementSelector { Element = new ElementCriteria { Name = name, ControlType = controlType } };
-            results.Add((sel, "Name+ControlType", 70));
-        }
+            1 => baseStability,                                    // unique & sufficient → full strategy score
+            0 => 0,                                                 // does not resolve in the live tree
+            < 0 => baseStability,                                  // could not verify → trust the base score
+            _ => Math.Max(1, nonUniqueCeiling - (matchCount - 1))  // non-unique → always below any unique selector
+        };
+    }
 
-        if (!string.IsNullOrEmpty(className) && !string.IsNullOrEmpty(controlType))
-        {
-            var sel = new ElementSelector { Element = new ElementCriteria { ClassName = className, ControlType = controlType } };
-            results.Add((sel, "ClassName+ControlType", 40));
-        }
-
-        return results.OrderByDescending(r => r.stability).ToList();
+    private static int ConstraintCount(ElementCriteria? c)
+    {
+        if (c is null) return 0;
+        var n = 0;
+        if (!string.IsNullOrEmpty(c.AutomationId)) n++;
+        if (!string.IsNullOrEmpty(c.Name)) n++;
+        if (!string.IsNullOrEmpty(c.ControlType)) n++;
+        if (!string.IsNullOrEmpty(c.ClassName)) n++;
+        return n;
     }
 }
+
+/// <summary>A single selector strategy: a human-readable name, its criteria, and a base stability score.</summary>
+public sealed record SelectorCandidate(string Strategy, ElementCriteria Criteria, int BaseStability);

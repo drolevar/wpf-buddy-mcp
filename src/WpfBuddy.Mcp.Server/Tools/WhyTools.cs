@@ -68,6 +68,10 @@ public sealed class WhyTools
             {
                 try
                 {
+                    // R2-28: only attach the (whole-ViewModel) dump when we find a concrete,
+                    // element-specific cause it would explain — a disabled command for THIS element —
+                    // rather than dumping the entire ViewModel unconditionally on every disabled button.
+                    var commandDisabledFound = false;
                     var commandResponse = await _probe.SendAsync("get_command_state");
                     if (commandResponse?.Data is not null)
                     {
@@ -79,6 +83,7 @@ public sealed class WhyTools
 
                         if (matchedCommand is not null && !matchedCommand.CanExecute)
                         {
+                            commandDisabledFound = true;
                             analysis.Reasons.Add(new DisabledReason
                             {
                                 Category = "command_canexecute",
@@ -111,11 +116,16 @@ public sealed class WhyTools
                         }
                     }
 
-                    // Check ViewModel state
-                    var vmResponse = await _probe.SendAsync("get_viewmodel_properties");
-                    if (vmResponse?.Data is not null)
+                    // Check ViewModel state — only when a disabled command was identified for this
+                    // element, so the dump is correlated to a concrete cause rather than attached
+                    // unconditionally (R2-28).
+                    if (commandDisabledFound)
                     {
-                        analysis.ViewModelState = vmResponse.Data;
+                        var vmResponse = await _probe.SendAsync("get_viewmodel_properties");
+                        if (vmResponse?.Data is not null)
+                        {
+                            analysis.ViewModelState = vmResponse.Data;
+                        }
                     }
                 }
                 catch { }

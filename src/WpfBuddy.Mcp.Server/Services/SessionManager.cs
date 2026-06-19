@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using FlaUI.Core;
 using FlaUI.Core.AutomationElements;
 using FlaUI.UIA3;
@@ -132,6 +133,55 @@ public sealed class SessionManager : IDisposable
     {
         lock (_lock) _activeWindow = window;
     }
+
+    /// <summary>
+    /// Re-resolve the application's currently-active top-level window (e.g. a modal dialog opened on
+    /// top of the main window) and cache it as the active window. The autonomous explorer calls this
+    /// each step so it inspects the window actually on screen instead of a stale cached main window
+    /// (R2-20). Prefers the OS foreground window when it belongs to this app, then a modal dialog,
+    /// and finally falls back to (re)resolving the main window.
+    /// </summary>
+    public Window? RefreshActiveWindow()
+    {
+        lock (_lock)
+        {
+            if (_application is null || _automation is null) return _activeWindow;
+            try
+            {
+                var windows = _application.GetAllTopLevelWindows(_automation);
+                if (windows is { Length: > 0 })
+                {
+                    var foreground = GetForegroundWindow();
+                    Window? chosen = windows.FirstOrDefault(w =>
+                    {
+                        try { return w.Properties.NativeWindowHandle.ValueOrDefault == foreground; }
+                        catch { return false; }
+                    });
+                    chosen ??= windows.FirstOrDefault(IsModalWindow);
+                    if (chosen is not null)
+                    {
+                        _activeWindow = chosen;
+                        return _activeWindow;
+                    }
+                }
+            }
+            catch { }
+
+            // Fall back to (re)resolving the main window.
+            try { _activeWindow = _application.GetMainWindow(_automation, TimeSpan.FromSeconds(2)); }
+            catch { }
+            return _activeWindow;
+        }
+    }
+
+    private static bool IsModalWindow(Window w)
+    {
+        try { return w.Patterns.Window.PatternOrDefault?.IsModal.ValueOrDefault == true; }
+        catch { return false; }
+    }
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
 
     private string? GetProcessName()
     {

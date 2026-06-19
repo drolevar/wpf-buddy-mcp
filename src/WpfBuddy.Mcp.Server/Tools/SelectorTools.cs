@@ -161,7 +161,8 @@ public sealed class SelectorTools
         {
             selector = r.selector,
             strategy = r.strategy,
-            stabilityScore = r.stability
+            stabilityScore = r.stability,
+            matchCount = r.matchCount < 0 ? (int?)null : r.matchCount   // null when the live tree couldn't be verified
         }).ToList();
 
         return JsonSerializer.Serialize(new { selectors = result }, JsonOptions.Default);
@@ -268,22 +269,11 @@ public sealed class SelectorTools
         if (element is null)
             throw ToolError.Fail("Element not found.");
 
-        var candidates = new List<object>();
-        var elemAutomationId = element.Properties.AutomationId.ValueOrDefault;
-        var elemName = element.Properties.Name.ValueOrDefault;
-        var elemControlType = element.Properties.ControlType.ValueOrDefault.ToString();
-        var elemClassName = element.Properties.ClassName.ValueOrDefault;
-
-        if (!string.IsNullOrEmpty(elemAutomationId))
-            candidates.Add(new { strategy = "AutomationId", selector = new { automationId = elemAutomationId }, stability = 95 });
-        if (!string.IsNullOrEmpty(elemAutomationId) && !string.IsNullOrEmpty(elemControlType))
-            candidates.Add(new { strategy = "AutomationId+ControlType", selector = new { automationId = elemAutomationId, controlType = elemControlType }, stability = 98 });
-        if (!string.IsNullOrEmpty(elemName))
-            candidates.Add(new { strategy = "Name", selector = new { name = elemName }, stability = 60 });
-        if (!string.IsNullOrEmpty(elemName) && !string.IsNullOrEmpty(elemControlType))
-            candidates.Add(new { strategy = "Name+ControlType", selector = new { name = elemName, controlType = elemControlType }, stability = 70 });
-        if (!string.IsNullOrEmpty(elemClassName) && !string.IsNullOrEmpty(elemControlType))
-            candidates.Add(new { strategy = "ClassName+ControlType", selector = new { className = elemClassName, controlType = elemControlType }, stability = 40 });
+        // R2-16: share the one candidate generator with RankSelectors so the two tools never diverge.
+        // ElementCriteria serializes with nulls omitted (JsonOptions), yielding the same compact shape.
+        var candidates = _selectors.GenerateCandidates(element)
+            .Select(c => new { strategy = c.Strategy, selector = c.Criteria, stability = c.BaseStability })
+            .ToList();
 
         return JsonSerializer.Serialize(new { candidates }, JsonOptions.Default);
     }

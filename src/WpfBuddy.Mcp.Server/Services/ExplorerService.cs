@@ -1,4 +1,4 @@
-using System.Text.Json;
+using System.Text.Json.Serialization;
 using FlaUI.Core.AutomationElements;
 using FlaUI.Core.Definitions;
 using FlaUI.Core.Input;
@@ -36,9 +36,10 @@ public sealed class ExplorerService
         visitedStates.Add(initialFingerprint);
 
         var actionQueue = new Queue<ExplorationAction>();
-        EnqueueActions(actionQueue, initialFingerprint);
+        EnqueueActions(actionQueue, initialFingerprint, depth: 1);
 
         int stepsTaken = 0;
+        int consecutiveStuck = 0;
 
         while (actionQueue.Count > 0 && stepsTaken < maxSteps)
         {
@@ -49,11 +50,26 @@ public sealed class ExplorerService
             var currentFingerprint = GetWindowFingerprint();
             if (currentFingerprint != action.SourceState)
             {
-                // Try to navigate back — skip this action
-                TryNavigateBack();
-                Thread.Sleep(delayMs);
+                // Not on the action's source screen — try to get back to it. R2-21: if we cannot
+                // return after several attempts (e.g. stranded on an unresponsive modal), bail out
+                // rather than spinning uselessly through the rest of the queue.
+                if (TryNavigateBack(action.SourceState, delayMs))
+                {
+                    consecutiveStuck = 0;
+                }
+                else if (++consecutiveStuck >= MaxConsecutiveStuck)
+                {
+                    result.Aborted = true;
+                    result.AbortReason = $"Stranded: could not return to a known screen after {consecutiveStuck} attempts (likely an unresponsive dialog).";
+                    break;
+                }
                 continue;
             }
+
+            // We're on the action's source screen — genuine progress, so the stuck streak is broken.
+            // (Reset here, not only on a successful navigate-back, so interspersed recoveries don't
+            // accumulate toward a misleading "consecutive" abort — R2-21.)
+            consecutiveStuck = 0;
 
             // Perform the action
             bool success = TryPerformAction(action);
@@ -79,17 +95,18 @@ public sealed class ExplorerService
                 var screen = CaptureScreen(newFingerprint);
                 screensDiscovered.Add(screen);
 
-                if (visitedStates.Count <= maxDepth * 3)
+                // R2-22: real per-action depth limit (was a global visited-count heuristic). Only
+                // recurse from the new screen while still within maxDepth navigation hops.
+                if (action.Depth < maxDepth)
                 {
-                    EnqueueActions(actionQueue, newFingerprint);
+                    EnqueueActions(actionQueue, newFingerprint, depth: action.Depth + 1);
                 }
             }
 
             // Navigate back if we opened a new window/dialog
             if (newFingerprint != action.SourceState)
             {
-                TryNavigateBack();
-                Thread.Sleep(delayMs);
+                TryNavigateBack(action.SourceState, delayMs);
             }
         }
 
@@ -101,11 +118,15 @@ public sealed class ExplorerService
         return result;
     }
 
+    // Bail out of the crawl after this many consecutive failures to return to a known screen (R2-21).
+    private const int MaxConsecutiveStuck = 3;
+
     private string GetWindowFingerprint()
     {
         try
         {
-            var window = _session.ActiveWindow;
+            // R2-20: re-resolve the window actually on screen (e.g. a dialog) rather than a stale cache.
+            var window = _session.RefreshActiveWindow();
             if (window is null) return "unknown";
 
             var title = window.Title ?? "untitled";
@@ -166,7 +187,7 @@ public sealed class ExplorerService
         };
     }
 
-    private void EnqueueActions(Queue<ExplorationAction> queue, string sourceState)
+    private void EnqueueActions(Queue<ExplorationAction> queue, string sourceState, int depth)
     {
         try
         {
@@ -195,7 +216,8 @@ public sealed class ExplorerService
                         ElementAutomationId = automationId,
                         ElementName = name,
                         ControlType = controlType,
-                        Description = $"Click '{name}' ({controlType})"
+                        Description = $"Click '{name}' ({controlType})",
+                        Depth = depth
                     });
                 }
             }
@@ -241,12 +263,56 @@ public sealed class ExplorerService
         }
     }
 
-    private void TryNavigateBack()
+    // Try to return to <paramref name="targetState"/>. Escape-only navigation strands the crawler on
+    // a modal that ignores Escape (R2-21), so each attempt also tries a non-committal dialog button.
+    // Returns true once the live window matches the target state, false if all attempts fail.
+    private bool TryNavigateBack(string targetState, int delayMs)
+    {
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            try { Keyboard.Press(FlaUI.Core.WindowsAPI.VirtualKeyShort.ESCAPE); }
+            catch { }
+            Thread.Sleep(delayMs);
+            if (GetWindowFingerprint() == targetState) return true;
+
+            // Escape didn't dismiss it — try a Cancel/Close/No button on a lingering modal dialog.
+            TryDismissModalDialog();
+            Thread.Sleep(delayMs);
+            if (GetWindowFingerprint() == targetState) return true;
+        }
+        return false;
+    }
+
+    private static readonly string[] DismissLabels = ["Cancel", "Close", "No"];
+
+    // Click a non-committal dismissal button on the current window — but ONLY when it is an actual
+    // modal dialog, never the main window (clicking "Cancel/Close" there could be destructive).
+    private void TryDismissModalDialog()
     {
         try
         {
-            // Try pressing Escape to close dialogs/popups
-            Keyboard.Press(FlaUI.Core.WindowsAPI.VirtualKeyShort.ESCAPE);
+            var window = _session.RefreshActiveWindow();
+            if (window is null) return;
+
+            bool isModal;
+            try { isModal = window.Patterns.Window.PatternOrDefault?.IsModal.ValueOrDefault == true; }
+            catch { isModal = false; }
+            if (!isModal) return;
+
+            var buttons = window.FindAllDescendants(cf => cf.ByControlType(ControlType.Button));
+            foreach (var b in buttons)
+            {
+                var label = b.Properties.Name.ValueOrDefault ?? "";
+                if (!DismissLabels.Any(d => label.Equals(d, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                try
+                {
+                    if (b.Patterns.Invoke.IsSupported) b.Patterns.Invoke.Pattern.Invoke();
+                    else b.Click();
+                }
+                catch { }
+                return;
+            }
         }
         catch { }
     }
@@ -319,46 +385,54 @@ public sealed class ExplorerService
         controlType is "Button" or "MenuItem" or "TabItem" or "Hyperlink" or "TreeItem";
 }
 
+// R2-24: explicit [JsonPropertyName] wire contract for the explorer DTOs (matches other models).
 public sealed class ExplorationResult
 {
-    public List<ScreenInfo> Screens { get; set; } = [];
-    public List<StateTransition> Transitions { get; set; } = [];
-    public int StepsTaken { get; set; }
-    public string MermaidDiagram { get; set; } = string.Empty;
+    [JsonPropertyName("screens")] public List<ScreenInfo> Screens { get; set; } = [];
+    [JsonPropertyName("transitions")] public List<StateTransition> Transitions { get; set; } = [];
+    [JsonPropertyName("stepsTaken")] public int StepsTaken { get; set; }
+    [JsonPropertyName("mermaidDiagram")] public string MermaidDiagram { get; set; } = string.Empty;
+
+    /// <summary>Set when the crawl gave up early (e.g. stranded on an unresponsive modal) — R2-21.</summary>
+    [JsonPropertyName("aborted")] public bool Aborted { get; set; }
+    [JsonPropertyName("abortReason")] public string? AbortReason { get; set; }
 }
 
 public sealed class ScreenInfo
 {
-    public string Fingerprint { get; set; } = string.Empty;
-    public string WindowTitle { get; set; } = string.Empty;
-    public int TotalElements { get; set; }
-    public int ActionableElements { get; set; }
-    public int AutomationIdCoverage { get; set; }
-    public List<ScreenElement> NavigationElements { get; set; } = [];
-    public List<ScreenElement> InputElements { get; set; } = [];
+    [JsonPropertyName("fingerprint")] public string Fingerprint { get; set; } = string.Empty;
+    [JsonPropertyName("windowTitle")] public string WindowTitle { get; set; } = string.Empty;
+    [JsonPropertyName("totalElements")] public int TotalElements { get; set; }
+    [JsonPropertyName("actionableElements")] public int ActionableElements { get; set; }
+    [JsonPropertyName("automationIdCoverage")] public int AutomationIdCoverage { get; set; }
+    [JsonPropertyName("navigationElements")] public List<ScreenElement> NavigationElements { get; set; } = [];
+    [JsonPropertyName("inputElements")] public List<ScreenElement> InputElements { get; set; } = [];
 }
 
 public sealed class ScreenElement
 {
-    public string? AutomationId { get; set; }
-    public string? Name { get; set; }
-    public string? ControlType { get; set; }
+    [JsonPropertyName("automationId")] public string? AutomationId { get; set; }
+    [JsonPropertyName("name")] public string? Name { get; set; }
+    [JsonPropertyName("controlType")] public string? ControlType { get; set; }
 }
 
 public sealed class StateTransition
 {
-    public string From { get; set; } = string.Empty;
-    public string To { get; set; } = string.Empty;
-    public string? Action { get; set; }
-    public string? ElementName { get; set; }
-    public string? ElementAutomationId { get; set; }
+    [JsonPropertyName("from")] public string From { get; set; } = string.Empty;
+    [JsonPropertyName("to")] public string To { get; set; } = string.Empty;
+    [JsonPropertyName("action")] public string? Action { get; set; }
+    [JsonPropertyName("elementName")] public string? ElementName { get; set; }
+    [JsonPropertyName("elementAutomationId")] public string? ElementAutomationId { get; set; }
 }
 
 public sealed class ExplorationAction
 {
-    public string SourceState { get; set; } = string.Empty;
-    public string ElementAutomationId { get; set; } = string.Empty;
-    public string ElementName { get; set; } = string.Empty;
-    public string ControlType { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    [JsonPropertyName("sourceState")] public string SourceState { get; set; } = string.Empty;
+    [JsonPropertyName("elementAutomationId")] public string ElementAutomationId { get; set; } = string.Empty;
+    [JsonPropertyName("elementName")] public string ElementName { get; set; } = string.Empty;
+    [JsonPropertyName("controlType")] public string ControlType { get; set; } = string.Empty;
+    [JsonPropertyName("description")] public string Description { get; set; } = string.Empty;
+
+    /// <summary>Navigation hops from the start screen; bounds recursion via maxDepth (R2-22).</summary>
+    [JsonPropertyName("depth")] public int Depth { get; set; }
 }
