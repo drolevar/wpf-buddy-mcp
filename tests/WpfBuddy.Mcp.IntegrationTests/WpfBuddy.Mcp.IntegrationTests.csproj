@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\WpfBuddy.Mcp.Server\WpfBuddy.Mcp.Server.csproj" />
+    <ProjectReference Include="..\..\src\WpfBuddy.Mcp.Probe\WpfBuddy.Mcp.Probe.csproj" />
   </ItemGroup>
 
   <ItemGroup>

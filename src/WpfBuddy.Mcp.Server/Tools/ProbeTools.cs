@@ -39,7 +39,7 @@ public sealed class ProbeTools
     }
 
     [McpServerTool(Name = "wpf_probe_connect", Destructive = false), Description("Connect to the in-process probe via named pipe.")]
-    public async Task<string> ProbeConnect([Description("Explicit named-pipe name to connect to (e.g. 'wpfbuddy-mcp-probe-{ProcessId}'). Optional; if omitted, the pipe is resolved from the currently attached app's process id.")] string? pipeName = null)
+    public async Task<string> ProbeConnect(IMcpServer server, [Description("Explicit named-pipe name to connect to (e.g. 'wpfbuddy-mcp-probe-{ProcessId}'). Optional; if omitted, the pipe is resolved from the currently attached app's process id.")] string? pipeName = null)
     {
         _audit.Record("wpf_probe_connect");
         bool connected;
@@ -78,6 +78,9 @@ public sealed class ProbeTools
         }
 
         _logger.LogInformation("wpf_probe_connect: connected={Connected} pipe='{PipeName}'", connected, _probe.PipeName);
+        // Client-facing (MCP notifications/message) log of a user-relevant event, via the SDK's
+        // client logger provider. Curated + sanitized; verbose tracing stays on stderr/file. (LOG-4)
+        try { server.AsClientLoggerProvider().CreateLogger("wpfbuddy.probe").LogInformation("Probe {Status} (pipe {Pipe}).", connected ? "connected" : "not connected", _probe.PipeName); } catch { }
         return JsonSerializer.Serialize(new { connected, pipeName = _probe.PipeName }, JsonOptions.Default);
     }
 

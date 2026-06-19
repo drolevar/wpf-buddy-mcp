@@ -177,9 +177,12 @@ public sealed class ProbeClient : IDisposable
 
     public void Disconnect()
     {
-        _reader?.Dispose();
-        _writer?.Dispose();
-        _pipe?.Dispose();
+        // Dispose the writer first (it flushes) while the pipe is still open, and guard each:
+        // the reader and writer both own the shared pipe, so disposing one closes it — flushing
+        // the other over a closed pipe would throw ObjectDisposedException.
+        try { _writer?.Dispose(); } catch { }
+        try { _reader?.Dispose(); } catch { }
+        try { _pipe?.Dispose(); } catch { }
         _reader = null;
         _writer = null;
         _pipe = null;
