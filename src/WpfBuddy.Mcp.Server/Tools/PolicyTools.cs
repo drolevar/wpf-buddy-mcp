@@ -15,17 +15,19 @@ public sealed class PolicyTools
     private readonly AuditLog _audit;
     private readonly ProbeClient _probe;
 
-    private static RecordingPolicy _currentPolicy = new();
+    // The live policy is a DI singleton (shared with ExplorerService); redaction rules remain local.
+    private readonly RecordingPolicy _currentPolicy;
     private static readonly List<RedactionRule> _redactionRules = new();
     private static readonly object _policyLock = new();
     private static readonly object _redactionLock = new();
 
-    public PolicyTools(SessionManager session, UiaAdapter uia, AuditLog audit, ProbeClient probe)
+    public PolicyTools(SessionManager session, UiaAdapter uia, AuditLog audit, ProbeClient probe, RecordingPolicy policy)
     {
         _session = session;
         _uia = uia;
         _audit = audit;
         _probe = probe;
+        _currentPolicy = policy;
     }
 
     [McpServerTool(Name = "wpf_get_capabilities", ReadOnly = true), Description("List all available tool categories and their status.")]

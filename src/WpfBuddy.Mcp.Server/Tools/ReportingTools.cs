@@ -191,10 +191,8 @@ public sealed class ReportingTools
         }
     }
 
-    private static bool IsInteractive(string? controlType) => controlType is
-        "Button" or "TextBox" or "Edit" or "ComboBox" or "CheckBox"
-        or "RadioButton" or "MenuItem" or "Tab" or "TabItem" or "ListItem"
-        or "DataItem" or "TreeItem" or "Slider" or "Hyperlink";
+    // R2-6: delegate to the shared catalog so the interactive list stays unified across files.
+    private static bool IsInteractive(string? controlType) => ControlTypeCatalog.IsInteractive(controlType);
 
     private static List<string> BuildRecommendations(double automationIdCoverage, double interactiveCoverage)
     {

@@ -15,12 +15,14 @@ public sealed class ExplorerService
     private readonly SessionManager _session;
     private readonly UiaAdapter _uia;
     private readonly AuditLog _audit;
+    private readonly RecordingPolicy _policy;
 
-    public ExplorerService(SessionManager session, UiaAdapter uia, AuditLog audit)
+    public ExplorerService(SessionManager session, UiaAdapter uia, AuditLog audit, RecordingPolicy policy)
     {
         _session = session;
         _uia = uia;
         _audit = audit;
+        _policy = policy;
     }
 
     public ExplorationResult Explore(int maxSteps = 30, int maxDepth = 3, int delayMs = 500)
@@ -35,8 +37,13 @@ public sealed class ExplorerService
         screensDiscovered.Add(initialScreen);
         visitedStates.Add(initialFingerprint);
 
+        // R2-18: honor the execution policy. The keyword denylist always applies; additionally, when
+        // destructive actions are disabled, the crawler avoids invoking arbitrary Buttons (which can
+        // commit changes) and sticks to navigation (tabs/menus/tree/links).
+        var allowDestructive = _policy.AllowDestructive;
+
         var actionQueue = new Queue<ExplorationAction>();
-        EnqueueActions(actionQueue, initialFingerprint, depth: 1);
+        EnqueueActions(actionQueue, initialFingerprint, depth: 1, allowDestructive);
 
         int stepsTaken = 0;
         int consecutiveStuck = 0;
@@ -99,7 +106,7 @@ public sealed class ExplorerService
                 // recurse from the new screen while still within maxDepth navigation hops.
                 if (action.Depth < maxDepth)
                 {
-                    EnqueueActions(actionQueue, newFingerprint, depth: action.Depth + 1);
+                    EnqueueActions(actionQueue, newFingerprint, depth: action.Depth + 1, allowDestructive);
                 }
             }
 
@@ -187,7 +194,7 @@ public sealed class ExplorerService
         };
     }
 
-    private void EnqueueActions(Queue<ExplorationAction> queue, string sourceState, int depth)
+    private void EnqueueActions(Queue<ExplorationAction> queue, string sourceState, int depth, bool allowDestructive)
     {
         try
         {
@@ -208,7 +215,10 @@ public sealed class ExplorerService
                     continue;
                 }
 
-                if (IsNavigationalType(controlType) && !string.IsNullOrEmpty(name))
+                // When destructive actions are disabled, skip plain Buttons (a click can commit an
+                // action) and keep only navigation controls (tabs/menus/tree/links) — R2-18.
+                if (IsNavigationalType(controlType) && !string.IsNullOrEmpty(name)
+                    && (allowDestructive || controlType != "Button"))
                 {
                     queue.Enqueue(new ExplorationAction
                     {

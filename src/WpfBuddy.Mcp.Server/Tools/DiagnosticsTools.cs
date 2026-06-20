@@ -73,12 +73,22 @@ public sealed class DiagnosticsTools
 
         var withId = actionable.Count(e => !string.IsNullOrEmpty(e.AutomationId));
         var withName = actionable.Count(e => !string.IsNullOrEmpty(e.Name));
+        var duplicateIdCount = allElements
+            .Where(e => !string.IsNullOrEmpty(e.AutomationId))
+            .GroupBy(e => e.AutomationId)
+            .Count(g => g.Count() > 1);
 
         var score = actionable.Count > 0 ? (int)((double)withId / actionable.Count * 100) : 100;
+        // R2-7: surface accessible-name coverage (previously computed but ignored) and duplicate-ID
+        // count as their own metrics, and state the score basis, so the report reflects more than
+        // AutomationId coverage alone instead of over-claiming.
+        var accessibilityScore = actionable.Count > 0 ? (int)((double)withName / actionable.Count * 100) : 100;
 
         var report = new
         {
             qualityScore = score,
+            scoreBasis = "AutomationId coverage of actionable controls",
+            accessibilityScore,
             grade = score switch
             {
                 >= 90 => "A",
@@ -91,6 +101,7 @@ public sealed class DiagnosticsTools
             actionableElements = actionable.Count,
             withAutomationId = withId,
             withAccessibleName = withName,
+            duplicateAutomationIds = duplicateIdCount,
             recommendations = GenerateRecommendations(actionable, allElements)
         };
 
@@ -150,11 +161,6 @@ public sealed class DiagnosticsTools
         return recommendations;
     }
 
-    private static bool IsActionable(string? controlType)
-    {
-        if (string.IsNullOrEmpty(controlType)) return false;
-        return controlType is "Button" or "TextBox" or "Edit" or "ComboBox" or "CheckBox"
-            or "RadioButton" or "MenuItem" or "Tab" or "TabItem" or "ListItem"
-            or "DataItem" or "TreeItem" or "Slider" or "Hyperlink";
-    }
+    // R2-6: delegate to the shared catalog so the actionable list stays unified across files.
+    private static bool IsActionable(string? controlType) => ControlTypeCatalog.IsInteractive(controlType);
 }

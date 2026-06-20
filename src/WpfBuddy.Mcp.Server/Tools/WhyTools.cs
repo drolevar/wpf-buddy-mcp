@@ -25,6 +25,12 @@ public sealed class WhyTools
         _audit = audit;
     }
 
+    // R2-30: these analyzers rely on heuristics (English keyword matching, ControlType string checks,
+    // UIA offscreen/size signals) that can misclassify. Label the output so callers treat reasons as
+    // ranked guesses, and prefer authoritative signals (the probe's binding/command state) when present.
+    private const string HeuristicNote =
+        "Reasons are heuristic (UIA signals + keyword/control-type guesses); connect the in-process probe for authoritative binding/command analysis.";
+
     [McpServerTool(Name = "wpf_why_disabled", ReadOnly = true), Description("Explain WHY an element is disabled. Checks CanExecute, bindings, DataContext, and ancestor state to find the root cause.")]
     public async Task<string> WhyDisabled([Description("AutomationId of the target element. Preferred selector; takes precedence over name.")] string? automationId = null, [Description("Element Name/content; used when automationId is omitted.")] string? name = null)
     {
@@ -142,7 +148,7 @@ public sealed class WhyTools
                 });
             }
 
-            return JsonSerializer.Serialize(new { analysis }, JsonOptions.Default);
+            return JsonSerializer.Serialize(new { analysis, note = HeuristicNote }, JsonOptions.Default);
         }
         catch (Exception ex)
         {
@@ -239,7 +245,8 @@ public sealed class WhyTools
                     isOffscreen = true,
                     bounds = new { bounds.X, bounds.Y, bounds.Width, bounds.Height },
                     reasons
-                }
+                },
+                note = HeuristicNote
             }, JsonOptions.Default);
         }
         catch (Exception ex)
@@ -319,29 +326,46 @@ public sealed class WhyTools
             {
                 try
                 {
+                    // R2-29: pass both id and name so the probe can scope bindings to the element's
+                    // subtree (it falls back to window-wide when the element isn't found).
                     var bindingResponse = await _probe.SendAsync("get_bindings",
-                        new Dictionary<string, string> { ["automationId"] = automationId ?? name ?? "" });
+                        new Dictionary<string, string>
+                        {
+                            ["automationId"] = automationId ?? "",
+                            ["name"] = name ?? ""
+                        });
 
                     if (bindingResponse?.Data is not null)
                     {
                         reasons.Add(new
                         {
                             category = "binding_info",
-                            description = $"Binding data (window-wide bindings, not element-scoped): {bindingResponse.Data}",
+                            description = $"Bindings for the selected element (probe scopes to the element's subtree when found, else window-wide): {bindingResponse.Data}",
                             suggestion = "Check if the bound property on the ViewModel has been set."
                         });
                     }
 
                     var key = automationId ?? name ?? "";
                     var errResponse = await _probe.SendAsync("get_binding_errors");
-                    if (errResponse?.Data is not null && !string.IsNullOrEmpty(key) && errResponse.Data.Contains(key))
+                    if (errResponse?.Data is not null && !string.IsNullOrEmpty(key))
                     {
-                        reasons.Add(new
+                        // R2-27: the probe keys binding errors by binding Path. Match the element key
+                        // against the structured BindingPath field (not a substring of the whole JSON,
+                        // which spuriously matched window titles etc.) and surface the real messages.
+                        var errInfo = JsonSerializer.Deserialize<BindingErrorsInfo>(errResponse.Data, JsonOptions.Default);
+                        var matching = errInfo?.Errors?
+                            .Where(e => !string.IsNullOrEmpty(e.BindingPath)
+                                && e.BindingPath!.Contains(key, StringComparison.OrdinalIgnoreCase))
+                            .ToList();
+                        if (matching is { Count: > 0 })
                         {
-                            category = "binding_error",
-                            description = "Binding error detected for this element — the data is not reaching the control.",
-                            suggestion = "Verify the binding Path matches the ViewModel property name. Check DataContext is set."
-                        });
+                            reasons.Add(new
+                            {
+                                category = "binding_error",
+                                description = $"Binding error(s) whose Path matches '{key}': {string.Join("; ", matching.Select(m => m.Message))}",
+                                suggestion = "Verify the binding Path matches the ViewModel property name. Check DataContext is set."
+                            });
+                        }
                     }
                 }
                 catch { }
@@ -363,7 +387,8 @@ public sealed class WhyTools
                 {
                     element = new { automationId, name, currentValue = (string?)null },
                     reasons
-                }
+                },
+                note = HeuristicNote
             }, JsonOptions.Default);
         }
         catch (Exception ex)

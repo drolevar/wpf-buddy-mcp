@@ -26,7 +26,7 @@ public sealed class ScreenshotTools
 
     // Return a PNG as an MCP image content block (base64 in `data` + image/png mime) so the
     // model can actually view it. Returning a JSON string would be delivered as TEXT.
-    private static CallToolResponse ImageResult(byte[] png) => new()
+    internal static CallToolResponse ImageResult(byte[] png) => new()
     {
         Content = new List<Content> { new() { Type = "image", Data = Convert.ToBase64String(png), MimeType = "image/png" } }
     };

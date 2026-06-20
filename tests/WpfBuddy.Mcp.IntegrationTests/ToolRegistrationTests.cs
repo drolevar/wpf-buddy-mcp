@@ -1,3 +1,4 @@
+using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
 using WpfBuddy.Mcp.Server.Tools;
 
@@ -20,7 +21,7 @@ public class ToolRegistrationTests
     {
         _uia = new UiaAdapter(_session);
         _recording = new RecordingService(_session);
-        _explorer = new ExplorerService(_session, _uia, _audit);
+        _explorer = new ExplorerService(_session, _uia, _audit, new RecordingPolicy());
         _devWatcher = new DevWatcherService(_session, _uia, _probe);
     }
 

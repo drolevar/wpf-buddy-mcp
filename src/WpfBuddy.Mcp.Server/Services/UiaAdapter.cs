@@ -105,17 +105,25 @@ public sealed class UiaAdapter
             return null;
 
         var needle = criteria.Name!;
-        var mode = criteria.NameMatch!.ToLowerInvariant();
-        return el =>
+        var mode = criteria.NameMatch!;
+        return el => MatchesName(el.Properties.Name.ValueOrDefault, needle, mode);
+    }
+
+    /// <summary>
+    /// Match an element's Name against a needle under a match mode: "contains", "startsWith", "regex",
+    /// or "equals" (the default for null/empty/unknown modes). Case-insensitive; invalid regex → false.
+    /// Pure and side-effect-free so the matching semantics can be unit-tested (FUNC-M3).
+    /// </summary>
+    public static bool MatchesName(string? actual, string? needle, string? mode)
+    {
+        var n = actual ?? string.Empty;
+        var needleStr = needle ?? string.Empty;
+        return (mode?.ToLowerInvariant()) switch
         {
-            var n = el.Properties.Name.ValueOrDefault ?? string.Empty;
-            return mode switch
-            {
-                "contains" => n.Contains(needle, StringComparison.OrdinalIgnoreCase),
-                "startswith" => n.StartsWith(needle, StringComparison.OrdinalIgnoreCase),
-                "regex" => SafeRegex(n, needle),
-                _ => n.Equals(needle, StringComparison.OrdinalIgnoreCase)
-            };
+            "contains" => n.Contains(needleStr, StringComparison.OrdinalIgnoreCase),
+            "startswith" => n.StartsWith(needleStr, StringComparison.OrdinalIgnoreCase),
+            "regex" => SafeRegex(n, needleStr),
+            _ => n.Equals(needleStr, StringComparison.OrdinalIgnoreCase)
         };
     }
 

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol.Server;
+using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
 using WpfBuddy.Mcp.Server.Tools;
 
@@ -21,6 +22,10 @@ builder.Logging.AddProvider(new FileLoggerProvider(FileLoggerProvider.ResolveLog
 
 builder.Services.AddSingleton<SessionManager>();
 builder.Services.AddSingleton<AuditLog>();
+// The live execution policy (allowDestructive etc.) is a shared singleton so PolicyTools (which sets it)
+// and ExplorerService (which honors it) read the same state. Recording workflows keep their own
+// throwaway RecordingPolicy instances — those are unrelated data, not this live policy.
+builder.Services.AddSingleton<RecordingPolicy>();
 builder.Services.AddSingleton<UiaAdapter>();
 builder.Services.AddSingleton<SelectorBuilder>();
 builder.Services.AddSingleton<ScreenshotService>();

@@ -357,8 +357,8 @@ public sealed class SnapshotTools
         return JsonSerializer.Serialize(new { durationMs, totalIterations = iteration, changesDetected = changes.Count, changes }, JsonOptions.Default);
     }
 
-    // Stable element keys for diffing: AutomationId when present, else a structural path.
-    private static Dictionary<string, UiElement> KeyElements(List<UiElement> tree)
+    // Stable element keys for diffing: AutomationId when present, else a structural path (CORR-H4).
+    internal static Dictionary<string, UiElement> KeyElements(List<UiElement> tree)
     {
         var map = new Dictionary<string, UiElement>();
         void Walk(List<UiElement> nodes, string path)

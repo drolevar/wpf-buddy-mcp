@@ -255,10 +255,48 @@ public sealed class ProbeHost : IDisposable
         if (window is null)
             return JsonSerializer.Serialize(new ProbeResponse { Error = "Window not found" });
 
-        var bindings = new List<object>();
-        CollectBindings(window, bindings);
+        // R2-29: scope to the requested element's subtree when an automationId/name is supplied, so
+        // the bindings are element-specific; fall back to window-wide when no such element is found.
+        var automationId = request.Parameters?.GetValueOrDefault("automationId");
+        var name = request.Parameters?.GetValueOrDefault("name");
+        DependencyObject root = window;
+        bool scoped = false;
+        if (!string.IsNullOrEmpty(automationId) || !string.IsNullOrEmpty(name))
+        {
+            var target = FindElement(window, automationId, name);
+            if (target is not null)
+            {
+                root = target;
+                scoped = true;
+            }
+        }
 
-        return JsonSerializer.Serialize(new ProbeResponse { Data = JsonSerializer.Serialize(new { count = bindings.Count, bindings = bindings.Take(50) }) });
+        var bindings = new List<object>();
+        CollectBindings(root, bindings);
+
+        return JsonSerializer.Serialize(new ProbeResponse { Data = JsonSerializer.Serialize(new { scoped, count = bindings.Count, bindings = bindings.Take(50) }) });
+    }
+
+    // Depth-first search of the visual tree for a FrameworkElement matching the given AutomationId
+    // (AutomationProperties.AutomationId) or x:Name. Used to element-scope binding collection (R2-29).
+    private static DependencyObject? FindElement(DependencyObject root, string? automationId, string? name)
+    {
+        if (root is FrameworkElement fe)
+        {
+            if (!string.IsNullOrEmpty(automationId) &&
+                string.Equals(System.Windows.Automation.AutomationProperties.GetAutomationId(fe), automationId, StringComparison.Ordinal))
+                return fe;
+            if (!string.IsNullOrEmpty(name) && string.Equals(fe.Name, name, StringComparison.Ordinal))
+                return fe;
+        }
+
+        var childCount = System.Windows.Media.VisualTreeHelper.GetChildrenCount(root);
+        for (int i = 0; i < childCount; i++)
+        {
+            var found = FindElement(System.Windows.Media.VisualTreeHelper.GetChild(root, i), automationId, name);
+            if (found is not null) return found;
+        }
+        return null;
     }
 
     private string GetCommandState(ProbeRequest request)

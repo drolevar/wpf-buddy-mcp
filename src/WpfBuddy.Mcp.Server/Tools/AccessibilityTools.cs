@@ -385,13 +385,8 @@ public sealed class AccessibilityTools
         return recs;
     }
 
-    private static bool IsInteractiveControlType(string? controlType)
-    {
-        if (string.IsNullOrEmpty(controlType)) return false;
-        return controlType is "Button" or "TextBox" or "Edit" or "ComboBox" or "CheckBox"
-            or "RadioButton" or "MenuItem" or "Tab" or "TabItem" or "ListItem"
-            or "DataItem" or "TreeItem" or "Slider" or "Hyperlink" or "Custom";
-    }
+    // R2-6: delegate to the shared catalog (previously diverged by also including "Custom").
+    private static bool IsInteractiveControlType(string? controlType) => ControlTypeCatalog.IsInteractive(controlType);
 
     private static string Error(string message) =>
         throw ToolError.Fail(message);

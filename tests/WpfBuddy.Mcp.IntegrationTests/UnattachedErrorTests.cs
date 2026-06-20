@@ -1,4 +1,5 @@
 using ModelContextProtocol;
+using WpfBuddy.Mcp.Server.Models;
 using WpfBuddy.Mcp.Server.Services;
 using WpfBuddy.Mcp.Server.Tools;
 using System.Text.Json;
@@ -26,7 +27,7 @@ public class UnattachedErrorTests
     {
         _uia = new UiaAdapter(_session);
         _recording = new RecordingService(_session);
-        _explorer = new ExplorerService(_session, _uia, _audit);
+        _explorer = new ExplorerService(_session, _uia, _audit, new RecordingPolicy());
         _devWatcher = new DevWatcherService(_session, _uia, _probe);
     }
 

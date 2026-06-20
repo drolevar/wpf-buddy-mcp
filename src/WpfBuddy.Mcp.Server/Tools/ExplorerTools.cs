@@ -20,7 +20,7 @@ public sealed class ExplorerTools
         _audit = audit;
     }
 
-    [McpServerTool(Name = "wpf_explore_app", Destructive = false), Description("Autonomously explore the attached app by clicking navigation elements. Returns a state machine diagram of discovered screens, element inventories, and testability scores.")]
+    [McpServerTool(Name = "wpf_explore_app", Destructive = true), Description("Autonomously explore the attached app by clicking navigation elements. Honors the execution policy (skips a destructive-keyword denylist always, and avoids invoking plain Buttons unless allowDestructive is set). Returns a state machine diagram of discovered screens, element inventories, and testability scores.")]
     public string ExploreApp(
         [Description("Maximum number of exploration steps (element interactions) to perform before stopping. Optional; defaults to 30.")] int maxSteps = 30,
         [Description("Maximum navigation depth to recurse from the starting screen. Optional; defaults to 3.")] int maxDepth = 3,
